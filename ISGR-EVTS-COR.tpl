@@ -24,6 +24,7 @@
 #       : Template put under Configuration Control
 # 7.0   : Replaced ISGRI_PI column by ISGRI_RT (SCREW-01384)
 # 7.1   : Renamed ISGRI_RT column as ISGRI_PI (SCREW-01430)
+# 7.2   : Including original PHA and RT
 #
 ################################################################################
 XTENSION	BINTABLE	/ Binary table extension
@@ -51,3 +52,8 @@ OBTEND		OBT_format	/ OBT of the end of the Science Window
 	TUNIT#	keV		/ Unit of column ISGRI_ENERGY
 	TTYPE#	SELECT_FLAG	/ Selection flag
 	TFORM#	1B		/ Format of column SELECT_FLAG
+    TTYPE#  RISE_TIME   / Event rise time
+    TFORM#  1B      / Format of column RISE_TIME
+    TTYPE#  ISGRI_PHA   / Pulse height in the ISGRI layer
+    TFORM#  1U      / Format of column ISGRI_PHA
+
