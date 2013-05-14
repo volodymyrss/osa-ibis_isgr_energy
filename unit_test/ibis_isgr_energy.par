@@ -1,0 +1,25 @@
+#************************************************************************
+# FILE:		ibis_isgr_energy.par
+# VERSION:	6.2
+# COMPONENT:	ibis_isgr_energy
+# AUTHOR:	Aymeric Sauvageon
+# DESCRIPTION:	parameter file of the component
+# HISTORY:
+#     PL, 04/10/03
+#     ASA, 5.0, 30/03/2004
+#     ASA, 6.2, 20/12/2007  after C. Couvreur changes, similar to 5.0
+#**********************************************************************
+inGRP,s,a,"test_data/swg.fits[1]",,,"DOL of the input group"
+outCorEvts,s,a,"test_data/isgr_cor_events.fits[ISGR-EVTS-COR]",,,"DOL of the corrected events data structure"
+outGRP,    s,h,"",,,"DOL of the output group"
+inRawEvts, s,h,"",,,"DOL of the input RAW events data structures"
+hkCnvDOL,  s,h,"",,,"DOL of the input converted HK1 (replaces the one in the group)"
+riseDOL,s,a,"test_data/isgr_3dl2_mod_0001.fits[1]",,,"DOL of the rise-time calibration table"
+GODOL,s,a,"test_data/ibis_isgr_gain_offset_0010.fits[ISGR-OFFS-MOD,1,BINTABLE]",,,"DOL of the Gain-Offset calibration table"
+supGDOL,s,a,"test_data/gain2.fits",,,"DOL of gain coefficients for 2nd method"
+supODOL,s,a,"test_data/offset2.fits",,,"DOL of offset coefficients for 2nd method"
+randSeed,  s,h,"",,,"seed for random generator (if empty: no seed)"
+useGTI,    b,h, y,,,"if true=y, unused PRP data must exist"
+eraseALL,  b,h, n,,,"if true=y, erase all rows before updating output"
+chatter,   i,h, 3,,,"verbosity level increasing from 0 to 4"
+mode,      s,h,"ql",,,""
