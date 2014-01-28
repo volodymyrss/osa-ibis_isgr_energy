@@ -66,7 +66,7 @@
 #include "dal3hk.h"
 
 #define COMPONENT_NAME           "ibis_isgr_energy"
-#define COMPONENT_VERSION        "8.2"
+#define COMPONENT_VERSION        "8.2.1"
 
 #define I_ISGR_ERR_MEMORY         -122050
 #define I_ISGR_ERR_BAD_INPUT      -122051
@@ -205,5 +205,6 @@ int ibis_isgr_energyTransform(dal_element *outTable,
                          DAL3_Byte   *isgriY,
                          DAL3_Byte   *isgriZ,
                          DAL3_Byte   *isgrPi,
+                         DAL3_Word   *isgrPHA2,
                          float       *isgrEnergy);
 #endif

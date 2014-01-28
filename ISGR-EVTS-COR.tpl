@@ -29,7 +29,7 @@
 ################################################################################
 XTENSION	BINTABLE	/ Binary table extension
 EXTNAME		ISGR-EVTS-COR	/ Extension name
-EXTREL		'7.1'		/ ISDC release number
+EXTREL		'7.2'		/ ISDC release number
 BASETYPE	DAL_TABLE	/ Data Access Layer base type
 TELESCOP	INTEGRAL	/ Telescope or mission name
 ORIGIN		ISDC		/ Origin of FITS file
@@ -52,8 +52,6 @@ OBTEND		OBT_format	/ OBT of the end of the Science Window
 	TUNIT#	keV		/ Unit of column ISGRI_ENERGY
 	TTYPE#	SELECT_FLAG	/ Selection flag
 	TFORM#	1B		/ Format of column SELECT_FLAG
-    TTYPE#  RISE_TIME   / Event rise time
-    TFORM#  1B      / Format of column RISE_TIME
-    TTYPE#  ISGRI_PHA   / Pulse height in the ISGRI layer
-    TFORM#  1U      / Format of column ISGRI_PHA
+    TTYPE#  ISGRI_PHA2   / Pulse height in the ISGRI layer, after LUT1
+    TFORM#  1U      / Format of column ISGRI_PHA2
 

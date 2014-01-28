@@ -139,6 +139,7 @@ int ibis_isgr_energyWork(dal_element *workGRP,
   DAL3_Byte *isgriZ   = NULL; /* ISGRI_Z   */
 
   /* output data */
+  DAL3_Word *isgrPHA2 = NULL;   /* ISGRI_PI, now RT corr */
   DAL3_Byte *isgrPi = NULL;   /* ISGRI_PI, now RT corr */
   float *isgrEnergy = NULL;   /* ISGRI_ENERGY  */
   OBTime obtStart=DAL3_NO_OBTIME,
@@ -268,6 +269,8 @@ int ibis_isgr_energyWork(dal_element *workGRP,
     /*#################################################################*/
     /* Allocate memory for the output vectors */
     /*#################################################################*/
+    buffSize=numEvents*sizeof(DAL3_Word);
+    status=DALallocateDataBuffer((void **)&isgrPHA2, buffSize, status);
     buffSize=numEvents*sizeof(DAL3_Byte);
     status=DALallocateDataBuffer((void **)&isgrPi, buffSize, status);
     buffSize=numEvents*sizeof(float);
@@ -346,7 +349,7 @@ int ibis_isgr_energyWork(dal_element *workGRP,
 				 meanBias,    
                                  isgriPha, riseTime,
                                  isgriY, isgriZ,
-                                 isgrPi, isgrEnergy);
+                                 isgrPi, isgrPHA2, isgrEnergy);
   } while(0);
 
   /*#################################################################*/
@@ -1258,6 +1261,7 @@ int ibis_isgr_energyTransform   (dal_element *outTable,
 				 DAL3_Byte   *isgriY,
 				 DAL3_Byte   *isgriZ,
 				 DAL3_Byte   *isgrPi,
+				 DAL3_Word   *isgrPHA2,
 				 float       *isgrEnergy)
 {
   int    status = ISDC_OK,
@@ -1412,6 +1416,7 @@ do {
     else isgrEnergy[j] = (float)ener;
 
     isgrPi[j]=(DAL3_Byte)irt;
+    isgrPHA2[j]=(DAL3_Word)ipha2;
 
   }
   if (chatter > 1) {
@@ -1429,6 +1434,8 @@ do {
   /*#################################################################*/
   /* Put computed columns into the output table */
   /*#################################################################*/
+  status=DALtablePutCol(outTable, "ISGRI_PHA2", 0, DAL_USHORT, numEvents,
+                        isgrPHA2, status);
   status=DALtablePutCol(outTable, KEY_COL_OUT, 0, DAL_BYTE, numEvents,
                         isgrPi, status);
   status=DALtablePutCol(outTable, "ISGRI_ENERGY", 0, DAL_FLOAT, numEvents,
