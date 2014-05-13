@@ -54,4 +54,8 @@ OBTEND		OBT_format	/ OBT of the end of the Science Window
 	TFORM#	1B		/ Format of column SELECT_FLAG
     TTYPE#  ISGRI_PHA2   / Pulse height in the ISGRI layer, after LUT1
     TFORM#  1U      / Format of column ISGRI_PHA2
+	TTYPE#	ISGRI_RT1	/ Corrected rise time for ISGRI
+	TFORM#	1B		/ Format of column ISGRI_RT1
+    TTYPE#  ISGRI_PHA1   / Pulse height in the ISGRI layer, before LUT1 - no gain evolution
+    TFORM#  1U      / Format of column ISGRI_PHA1
 

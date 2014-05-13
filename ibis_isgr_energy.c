@@ -141,6 +141,8 @@ int ibis_isgr_energyWork(dal_element *workGRP,
   /* output data */
   DAL3_Word *isgrPHA2 = NULL;   /* ISGRI_PI, now RT corr */
   DAL3_Byte *isgrPi = NULL;   /* ISGRI_PI, now RT corr */
+  DAL3_Word *isgrPHA1 = NULL;   /* ISGRI_PI, now RT corr */
+  DAL3_Byte *isgrRT1 = NULL;   /* ISGRI_PI, now RT corr */
   float *isgrEnergy = NULL;   /* ISGRI_ENERGY  */
   OBTime obtStart=DAL3_NO_OBTIME,
          obtEnd=DAL3_NO_OBTIME;
@@ -271,6 +273,10 @@ int ibis_isgr_energyWork(dal_element *workGRP,
     /*#################################################################*/
     buffSize=numEvents*sizeof(DAL3_Word);
     status=DALallocateDataBuffer((void **)&isgrPHA2, buffSize, status);
+    buffSize=numEvents*sizeof(DAL3_Word);
+    status=DALallocateDataBuffer((void **)&isgrPHA1, buffSize, status);
+    buffSize=numEvents*sizeof(DAL3_Byte);
+    status=DALallocateDataBuffer((void **)&isgrRT1, buffSize, status);
     buffSize=numEvents*sizeof(DAL3_Byte);
     status=DALallocateDataBuffer((void **)&isgrPi, buffSize, status);
     buffSize=numEvents*sizeof(float);
@@ -349,7 +355,7 @@ int ibis_isgr_energyWork(dal_element *workGRP,
 				 meanBias,    
                                  isgriPha, riseTime,
                                  isgriY, isgriZ,
-                                 isgrPi, isgrPHA2, isgrEnergy);
+                                 isgrPi, isgrPHA2, isgrRT1, isgrPHA1, isgrEnergy);
   } while(0);
 
   /*#################################################################*/
@@ -1262,6 +1268,8 @@ int ibis_isgr_energyTransform   (dal_element *outTable,
 				 DAL3_Byte   *isgriZ,
 				 DAL3_Byte   *isgrPi,
 				 DAL3_Word   *isgrPHA2,
+				 DAL3_Byte   *isgrRT1,
+				 DAL3_Word   *isgrPHA1,
 				 float       *isgrEnergy)
 {
   int    status = ISDC_OK,
@@ -1358,6 +1366,9 @@ do {
 
     pha = isgriPha[j]*gh[pixelNo] + oh[pixelNo];
 
+    isgrRT1[j]=(DAL3_Byte)rt;
+    isgrPHA1[j]=(DAL3_Word)pha;
+
     /*--- drift correction ---*/
     /*rt=(rt-offset_corrRT)/gain_corrRT; Rt effect included into PH gain2 and offset2*/
     corr=rt*1000.;
@@ -1436,6 +1447,10 @@ do {
   /*#################################################################*/
   status=DALtablePutCol(outTable, "ISGRI_PHA2", 0, DAL_USHORT, numEvents,
                         isgrPHA2, status);
+  status=DALtablePutCol(outTable, "ISGRI_RT1", 0, DAL_BYTE, numEvents,
+                        isgrRT1, status);
+  status=DALtablePutCol(outTable, "ISGRI_PHA1", 0, DAL_USHORT, numEvents,
+                        isgrPHA1, status);
   status=DALtablePutCol(outTable, KEY_COL_OUT, 0, DAL_BYTE, numEvents,
                         isgrPi, status);
   status=DALtablePutCol(outTable, "ISGRI_ENERGY", 0, DAL_FLOAT, numEvents,
