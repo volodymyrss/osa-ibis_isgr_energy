@@ -356,6 +356,7 @@ int ibis_isgr_energyWork(dal_element *workGRP,
                                  isgriPha, riseTime,
                                  isgriY, isgriZ,
                                  isgrPi, isgrPHA2, isgrRT1, isgrPHA1, isgrEnergy);
+      RILlogMessage(NULL, Log_1,"point 0: %i",status);
   } while(0);
 
   /*#################################################################*/
@@ -373,6 +374,8 @@ int ibis_isgr_energyWork(dal_element *workGRP,
                               "Error not taken into account for exit value");
     }
   }
+
+
   if (isgrRiseTabPtr != NULL) {
     i=DALobjectClose(isgrRiseTabPtr, DAL_SAVE, ISDC_OK);
     if (i != ISDC_OK) {
@@ -405,6 +408,7 @@ int ibis_isgr_energyWork(dal_element *workGRP,
 			 "Error not taken into account for exit value");
     }
   }
+      RILlogMessage(NULL, Log_1,"point 1: %i",status);
 
   /*#################################################################*/
   /* Release data buffers */
@@ -439,6 +443,8 @@ int ibis_isgr_energyWork(dal_element *workGRP,
     RILlogMessage(NULL, Error_1, "Error not taken into account for exit value");
   }
   else if (chatter > 2) RILlogMessage(NULL, Log_0, "Data buffers released.");
+
+      RILlogMessage(NULL, Log_1,"point 2: %i",status);
 
   return status;
 }

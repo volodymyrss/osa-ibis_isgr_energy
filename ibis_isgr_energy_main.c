@@ -201,11 +201,17 @@ int main (int argc, char *argv[])
     status=ibis_isgr_energyWork(workGRP, gti, erase, chatter,
                                 acorDOLstr, riseDOLstr,
                                 phGainDOLstr, phOffsDOLstr);
+    RILlogMessage(NULL, Log_1,"point 2: %i",status);
+
     if (status == I_ISGR_ERR_MEMORY) {
       RILlogMessage(NULL, Error_2, "Program aborted: memory allocation error.");
     }
+
+    RILlogMessage(NULL, Log_1,"will close SWG maybe");
     if (workGRP != NULL) status=CommonCloseSWG(workGRP, status);
+    RILlogMessage(NULL, Log_1,"closed SWG");
     /* if error while closing, status is only changed if it was ISDC_OK */
+    RILlogMessage(NULL, Log_1,"point 3: %i",status);
 
   } while(0);
 
@@ -215,7 +221,9 @@ int main (int argc, char *argv[])
   /*if(rteffectDOLstr !=NULL) free(rteffectDOLstr);*/
   if (phGainDOLstr != NULL) free(phGainDOLstr);
   if (phOffsDOLstr != NULL) free(phOffsDOLstr);
+    RILlogMessage(NULL, Log_1,"point 4: %i",status);
 
   CommonExit(status);
+    RILlogMessage(NULL, Log_1,"point 5: %i",status);
   return(status);   /* to make lint happy */
 }
