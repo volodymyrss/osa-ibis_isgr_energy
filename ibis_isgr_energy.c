@@ -120,7 +120,8 @@ int ibis_isgr_energyWork(dal_element *workGRP,
                          char        *acorName,
                          char        *riseName,
                          char        *phGainDOLstr,
-                         char        *phOffDOLstr)
+                         char        *phOffDOLstr,
+                         int          corGainDrift)
 {
   int    i, status = ISDC_OK,
          freeStatus= ISDC_OK;
@@ -355,7 +356,7 @@ int ibis_isgr_energyWork(dal_element *workGRP,
 				 meanBias,    
                                  isgriPha, riseTime,
                                  isgriY, isgriZ,
-                                 isgrPi, isgrPHA2, isgrRT1, isgrPHA1, isgrEnergy);
+                                 isgrPi, isgrPHA2, isgrRT1, isgrPHA1, isgrEnergy, corGainDrift);
   } while(0);
 
   /*#################################################################*/
@@ -1270,7 +1271,8 @@ int ibis_isgr_energyTransform   (dal_element *outTable,
 				 DAL3_Word   *isgrPHA2,
 				 DAL3_Byte   *isgrRT1,
 				 DAL3_Word   *isgrPHA1,
-				 float       *isgrEnergy)
+				 float       *isgrEnergy,
+                 int          corGainDrift)
 {
   int    status = ISDC_OK,
     pixelNo,mce,
@@ -1381,10 +1383,15 @@ do {
     if (irt < 0)        {irt=0;   infoEvt[0]++;}
     else if (irt > 255) {irt=255; infoEvt[1]++;}
 
-    random_num=DAL3GENrandomDoubleX1()-0.5;
-    if (pha < Chc[irt]) pha=(pha+random_num-offset_corrPH1)/gain_corrPH1;
-    else           pha=(pha+random_num-offset_corrPH2[irt])/gain_corrPH2[irt];
-    pha=  2*(pha-off_scale)/g_scale;
+    if (corGainDrift) {
+        random_num=DAL3GENrandomDoubleX1()-0.5;
+        if (pha < Chc[irt]) pha=(pha+random_num-offset_corrPH1)/gain_corrPH1;
+        else           pha=(pha+random_num-offset_corrPH2[irt])/gain_corrPH2[irt];
+        pha=  2*(pha-off_scale)/g_scale;
+    } else {
+        pha=  (pha-off_scale)/g_scale;
+    };
+
     ipha= (int)pha;
 
     /*random_num=500.0*rand()/(1+(double)RAND_MAX);*/

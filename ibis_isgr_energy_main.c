@@ -52,7 +52,7 @@ int main (int argc, char *argv[])
         makeUnique = 1,
         clobber,
         gti,
-        erase, chatter;
+        erase, chatter, corGainDrift;
 
   char *riseDOLstr = NULL,
        *acorDOLstr = NULL,
@@ -110,6 +110,15 @@ int main (int argc, char *argv[])
         RILlogMessage(NULL, Log_2,"Erase output rows");
       else
         RILlogMessage(NULL, Log_2,"Replace output columns");
+    }
+
+    status=PILGetBool("corGainDrift", &corGainDrift);
+    if (status != ISDC_OK) break;
+    if (chatter > 0) {
+      if (corGainDrift)
+        RILlogMessage(NULL, Log_2,"enabled gain derift correction");
+      else
+        RILlogMessage(NULL, Log_2,"no gain drift correction: should be in LUT2!");
     }
     /*SPR 4664 ----*/
     /*status=PILGetInt("RTdriftCor", &RTdriftCor);
@@ -200,7 +209,7 @@ int main (int argc, char *argv[])
   /*#################################################################*/
     status=ibis_isgr_energyWork(workGRP, gti, erase, chatter,
                                 acorDOLstr, riseDOLstr,
-                                phGainDOLstr, phOffsDOLstr);
+                                phGainDOLstr, phOffsDOLstr, corGainDrift);
     if (status == I_ISGR_ERR_MEMORY) {
       RILlogMessage(NULL, Error_2, "Program aborted: memory allocation error.");
     }
