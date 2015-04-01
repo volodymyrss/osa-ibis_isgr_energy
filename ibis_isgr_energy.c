@@ -1354,6 +1354,10 @@ do {
     RILlogMessage(NULL, Log_0, "Equal energy for laws  (RT=35): %5.2f keV",
                               (Chc[35]-offset_corrPH1)/gain_corrPH1 );
   }
+
+
+  long int count_zero_deltae=0;
+  int n_anomaly=0;
  
   /*#################################################################*/
   /* Compute corrected energies  */
@@ -1389,6 +1393,8 @@ do {
         else           pha=(pha+random_num-offset_corrPH2[irt])/gain_corrPH2[irt];
         pha=  2*(pha-off_scale)/g_scale;
     } else {
+        random_num=DAL3GENrandomDoubleX1()-0.5;
+        pha=pha+random_num;
         pha=  (pha-off_scale)/g_scale;
     };
 
@@ -1399,25 +1405,78 @@ do {
 
 
    if ((ipha >= 0) && (ipha < 2048)) {
-      /*ener = (double) 2.0*isgriRtTab[(int)(pha/2.0)][irt][(int)random_num]/30.0;*/
+
+/*
+      //ener = (double) 2.0*isgriRtTab[(int)(pha/2.0)][irt][(int)random_num]/30.0;
       if ((pha/2.0-floor(pha/2.0)) <0.5) ipha2 = (long)floor(pha/2.0) ;
         else ipha2 = (long)ceil(pha/2.0);
       index_cc= ipha2
 	+ISGRI_RT_N_ENER_SCALED*irt
                     +ISGRI_RT_N_ENER_SCALED*ISGRI_RT_N_DATA*(long)random_num;
-      /*NP Piotr start*/
+      //NP Piotr start
       index_cc_real=pha/2.0
 	+ISGRI_RT_N_ENER_SCALED*(long)irt
 	+ISGRI_RT_N_ENER_SCALED*ISGRI_RT_N_DATA*(long)random_num;
       deltin = index_cc_real-(double)index_cc;
       if (index_cc+1<ISGRI_RT_N_ENER_SCALED*ISGRI_RT_N_DATA*ISGRI_RT_N_RANDOM_DIM){
         delte = deltin*((double)isgriRtTab[index_cc+1]-(double)isgriRtTab[index_cc]);
+
+        if (isgriRtTab[index_cc+1]==isgriRtTab[index_cc]) {
+            if (index_cc+2<ISGRI_RT_N_ENER_SCALED*ISGRI_RT_N_DATA*ISGRI_RT_N_RANDOM_DIM){
+                //delte = deltin*(((double)isgriRtTab[index_cc+2]-(double)isgriRtTab[index_cc]))/2.;
+                //printf("2-channel interpolation at %.5lg %i\n",pha,irt);
+                delte=0;
+            } else {
+                delte=0;
+            };
+        };
+
       }
       else{
         delte=0;
       }
-      ener=FINALOFFS+((double)isgriRtTab[index_cc]+delte)/30.0;
-      /*NP Piotr end*/
+      if (delte==0) ener=0; else
+        ener=FINALOFFS+((double)isgriRtTab[index_cc]+delte)/30.0;
+      //NP Piotr end
+      */
+
+ //     if ((pha/2.0-floor(pha/2.0)) <0.5) ipha2 = (long)floor(pha/2.0) ;
+  //      else ipha2 = (long)ceil(pha/2.0);
+      ipha2 = (long)floor(pha/2.0);
+      deltin=pha/2.0-ipha2;
+
+      index_cc = ipha2
+                +ISGRI_RT_N_ENER_SCALED*irt
+                +ISGRI_RT_N_ENER_SCALED*ISGRI_RT_N_DATA*(long)random_num;
+
+        
+
+
+      double energy_0=(double)isgriRtTab[index_cc];
+      double energy_gradient=0;
+      int gradient_extend=0;
+
+      while (energy_gradient==0) {
+          gradient_extend++;
+          if (index_cc+gradient_extend>=ISGRI_RT_N_ENER_SCALED*ISGRI_RT_N_DATA*ISGRI_RT_N_RANDOM_DIM) {
+            printf("anomaly: at index at the end, pha %i, rt %i; unable to estimate gradient, extend %i\n",ipha,irt,gradient_extend);
+            n_anomaly++;
+            energy_0=0;
+            break;     
+          } else {
+            energy_gradient=((double)isgriRtTab[index_cc+gradient_extend]-(double)isgriRtTab[index_cc])/(double)gradient_extend;
+          };
+      };
+
+      delte=energy_gradient*deltin;
+
+      ener=FINALOFFS+(energy_0+delte)/30.0;
+      if (delte==0) {
+        ener=0;
+        count_zero_deltae++;
+        printf("anomaly: energy not changing, %i, %i; %.5lg %.5lg; d pha %.5lg\n",ipha,irt,energy_0,energy_0+energy_gradient,deltin);
+        n_anomaly++;
+      };
     }
     else if (ipha >= 2048) {
       /*ener =(double) 2.0*isgriRtTab[(int)(ISGRI_RT_N_ENER/2.0-1)][irt][(int)random_num]/30.0;*/
@@ -1436,7 +1495,16 @@ do {
     isgrPi[j]=(DAL3_Byte)irt;
     isgrPHA2[j]=(DAL3_Word)ipha2;
 
+    if (n_anomaly>10) { // hardcoded anomaly number
+        RILlogMessage(NULL, Error_1, "large number of anomalies", n_anomaly);
+        status=-1;
+        break;
+    };
   }
+
+  
+  RILlogMessage(NULL, Log_1, "total number of anomalies", n_anomaly);
+
   if (chatter > 1) {
     RILlogMessage(NULL, Log_1, "Total COR rise-time <= -1: %9ld", infoEvt[0]);
     RILlogMessage(NULL, Log_1, "Total COR rise-time >=256: %9ld", infoEvt[1]);
@@ -1447,6 +1515,7 @@ do {
     RILlogMessage(NULL, Log_1, "Total COR amplitude>=2048: %9ld", infoEvt[3]);
     RILlogMessage(NULL, Log_1, "Total with LUT2 coef. <=0: %9ld",
                               infoEvt[6]-infoEvt[2]);
+    RILlogMessage(NULL, Log_1, "Total COR deltae == 0 because LUT2: %9ld", count_zero_deltae);
   }
 
   /*#################################################################*/

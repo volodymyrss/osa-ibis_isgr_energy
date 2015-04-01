@@ -66,7 +66,7 @@
 #include "dal3hk.h"
 
 #define COMPONENT_NAME           "ibis_isgr_energy"
-#define COMPONENT_VERSION        "8.2.2"
+#define COMPONENT_VERSION        "8.2.3"
 
 #define I_ISGR_ERR_MEMORY         -122050
 #define I_ISGR_ERR_BAD_INPUT      -122051
@@ -96,6 +96,7 @@
 */
 
 #define DS_ISGR_RAW       "ISGR-EVTS-ALL"
+#define DS_ISGR_RAW_CAL   "ISGR-CDTE-CRW"
 #define DS_ISGR_GO        "ISGR-OFFS-MOD"
 #define DS_ISGR_3DL2_MOD  "ISGR-3DL2-MOD"
 #define DS_PHG2           "ISGR-GAIN-MOD"
