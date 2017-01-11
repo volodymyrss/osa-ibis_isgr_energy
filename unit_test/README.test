@@ -1,0 +1,115 @@
+#! /bin/csh -f
+#
+#************************************************************
+#
+#   File : README.test
+#   Version : 8.3
+#   Component : ibis_isgr_energy
+#   Author : PL, 24/06/2002
+#           ASA, 30/03/2004
+#************************************************************
+setenv PFILES .\;..:$ISDC_ENV/pfiles
+setenv COMMONLOGFILE +common_log.txt
+#
+setenv TESTDATAFILE ibis_isgr_energy-8.3_test_data.tar.gz
+setenv OUTREFFILE   ibis_isgr_energy-8.3_outref.tar.gz
+echo ""
+echo "This is the unit test for ibis_isgr_energy version 8.3"
+#
+#************************************************************
+#
+#    remove the old data ...
+#
+#************************************************************
+echo ""
+echo "remove the old data structure -- if existing ..."
+echo ""
+\rm *.par
+#\rm *.fits
+#goto skipTar
+
+  if (-d test_data) then
+    chmod -R u+w test_data
+    \rm -rf test_data
+  endif
+  if (-d outref) then
+    chmod -R u+w outref
+    \rm -rf outref
+  endif
+
+echo "done"
+#************************************************************
+#
+#     copy the input data from the DATA_DIR directory
+#
+#************************************************************
+echo ""
+echo "copy the input data ..."
+echo ""
+
+if (-r ./$TESTDATAFILE) then
+  echo "using $TESTDATAFILE already present to run tests"
+  gunzip -c ./$TESTDATAFILE | tar xf -
+else if (-r $ISDC_TEST_DATA_DIR/$TESTDATAFILE) then
+  echo "using $TESTDATAFILE from $ISDC_TEST_DATA_DIR"
+  gunzip -c $ISDC_TEST_DATA_DIR/$TESTDATAFILE | tar xf -
+else
+  echo "***** Error: Could not find test input data" 
+  echo "             Please check the proper setting of env. variables:" 
+  echo
+  echo "       ISDC_TEST_DATA_DIR = $ISDC_TEST_DATA_DIR" 
+  echo "       TESTDATAFILE       = $TESTDATAFILE"
+  echo
+  echo "Aborting ..."
+  echo 
+  exit 1
+endif
+
+if (-r ./$OUTREFFILE) then
+  echo "using $OUTREFFILE already present to run tests"
+  gunzip -c ./$OUTREFFILE | tar xf -
+else if (-r $ISDC_TEST_DATA_DIR/$OUTREFFILE) then
+  echo "using $OUTREFFILE from $ISDC_TEST_DATA_DIR"
+  gunzip -c $ISDC_TEST_DATA_DIR/$OUTREFFILE | tar xf -
+else
+  echo "***** Error: Could not find test input data" 
+  echo "             Please check the proper setting of env. variables:" 
+  echo
+  echo "       ISDC_TEST_DATA_DIR = $ISDC_TEST_DATA_DIR" 
+  echo "       OUTREFFILE         = $OUTREFFILE"
+  echo
+  echo "Aborting ..."
+  echo 
+  exit 2
+endif
+
+skipTar:
+# Clean the previous data set
+if (-d ./out) then 
+  chmod -R +w ./out/* 
+  \rm -rf ./out
+endif
+mkdir ./out
+echo "done"
+#************************************************************
+#
+#     run the test ...
+#
+#************************************************************
+#outCorEvts="test_data/isgr_cor_events.fits[ISGR-EVTS-COR]" \
+echo "run the test ..."
+echo ""
+../ibis_isgr_energy \
+inGRP="test_data/swg.fits[1]" \
+riseDOL="test_data/isgr_3dl2_mod_0001.fits[1]" \
+outCorEvts="" \
+GODOL="test_data/ibis_isgr_gain_offset_0010.fits[ISGR-OFFS-MOD,1,BINTABLE]" \
+supGDOL="test_data/isgr_gain_mod_0001.fits" \
+supODOL="test_data/isgr_off2_mod_0001.fits" \
+useGTI=n randSeed="500"  chatter=4 eraseALL=y
+echo ""
+echo "The test case 1 has finished. You should see NO error"
+echo ""
+mv common_log.txt out/
+mv test_data/isgri_cor_events.fits out/
+exit

@@ -1,0 +1,134 @@
+NAME
+        ibis_isgr_energy - Version 8.3
+	Performs energy correction for each raw ISGRI event, by using two
+	calibration tables (gain/offset then rise-time) and auxiliary files
+	(cumulated proton doses, ...).
+	The corrected energy is given in keV (with a corrected rise-time).
+
+USAGE
+
+	ibis_isgr_energy
+	or any other way permitted by PIL
+
+DESCRIPTION
+
+Due to the charge loss in the CdTe crystal, for a given energy deposit, 
+events which have interacted at different depths in the crystal get different
+measured amplitudes (PHA). The rise-time of the signal induced by these event
+is also different, and a clear quasi-linear correlation between the charge 
+loss and the rise-time (RT) variation is observed (a deeper interaction induces
+a larger charge loss, at the same time as a larger rise-time). It is then 
+possible to correct this charge loss effect, by taking into account the
+rise-time information of the signal. It is what is done in this module.
+Indeed, the correction is done by rescaling each spectra obtained for a given
+rise-time  value, in order to put each corrected event corresponding to a given
+energy deposits into the same bin.
+
+The calibration processing is made of 2 distinct steps.
+The aim of the first step is to correct raw events from the dependency on
+pixels (with a LUT1 table).
+Second step corrects the PHA drift, using 2 distinct laws:
+- For E>=Ec, we correct with a gain1 (wich depends on proton doses and
+  temperature) and an offset1 (which depends on temperature and orbit number).
+- For E<=Ec, we use a second law with a gain2 and offset2 which depends on
+  rise-time, temperature, proton doses and revolution number.
+Ec is chosen with Ec=(o2-o1)/(g1-g2) to give same energy for both laws. 
+The goal of the second step is to convert corrected events into energy (in keV).
+We use a rise-time correction table (LUT2 3D 1024*256*500) giving for each
+incident energy and rise-time a probable energy (among 500 possible).
+
+We have then: Isgr_Ed = offset + LUT2_3D[pha/2, rt, random_number]/30. 
+
+In this formula, pha and rt have been made pixel independant with LUT1
+(gain/offset for each pixel) and corrected from temperature, cumulated dose of 
+protons, rise-time effect. The offset value is a constant.
+After correction by LUT1, if the rise-time or the amplitude is out of the LUT2 
+table, we take (version 4.1 and after) the last available value of LUT2.
+
+ This random generator can have the seed specified in the parameters.
+The seed must be an unsigned long strictly below (2^32)-1.
+If empty, you will always get the same sequence of random numbers
+(since DAL3GEN random function has a default seed).
+
+ With default "eraseALL" input, program deletes all rows in output COR (if any)
+and adds rows. With "eraseALL" set to false, keeps existing rows in output COR
+and update output columns. In this case, error -122054 is issued if the number
+of existing rows do not match data.
+ With "useGTI" set to false, the number of GTI is 0 and program treats all
+Science Window events even with a PRP structure (for OBT) with no row.
+ From version 5.3, with default "useGTI" yes, the event selection is done at
+level PRP (instead of RAW) to read OB_TIME limits (correction of SPR 3686).
+Beware, with "useGTI" set to false, event selection is still at RAW level
+and SPR 3686 cannot be corrected (wrong energy calculation if events do not
+fill the whole Science Window).
+
+
+PARAMETERS
+
+ Parameter             Type    Description                       Comments
+  Name
+  -----------------+-------+-------------------------------------+------------
+     inGRP           string  DOL of the input group               input
+     outCorEvts      string  DOL of the corrected events          input/output
+                             data structures
+     outGRP          string  DOL of the output group              input/output
+     inRawEvts       string  DOL of the raw events data           input hidden
+                             structures
+     hkCnvDOL        string  DOL of the Converted HK (replaces    input hidden
+                             the one in the group if not NULL)
+     riseDOL         string  DOL of the ISGRI rise-time           input
+                             calibration table (LUT2)
+     GODOL           string  DOL of the ISGRI gain-offset         input
+                             calibration table (LUT1)
+     supGDOL         string  DOL of coefficients for gain from    input
+                             the 2nd calibration law    
+     supODOL         string  DOL of coefficients for offset from  input
+                             the 2nd calibration law     
+
+     randSeed        string  Seed for random generator            input hidden
+     useGTI         boolean  if true=y, unused PRP data must      input hidden
+                             exist                                (default=yes)
+     eraseALL       boolean  if true=y, erase all rows before     input hidden
+                             updating output DOL                  (default=no)
+     chatter        integer  Verbosity level increasing           input hidden
+                             from 0 to 4                          (default = 3)
+
+
+EXAMPLES
+
+   See USAGE
+
+
+ERROR CODES
+   On error the following error numbers are returned :
+
+   Constant Name                   Value    Description 
+   -----------------------------+--------+------------------------------------
+   I_ISGR_ERR_MEMORY             -122050  Memory allocation error
+   I_ISGR_ERR_BAD_INPUT          -122051  invalid PIL input
+   I_ISGR_ERR_ISGR_OFFS_BAD      -122052  Wrong size of ISGRI gain/offset
+                                          calibration table
+   I_ISGR_ERR_ISGR_RISE_BAD      -122053  Wrong size of ISGRI rise-time
+                                          calibration table
+   I_ISGR_ERR_OUT_COR            -122054  Inconsistent number of output rows
+   I_ISGR_ERR_IBIS_IREM_BAD      -122055  Wrong size of IREM coefficient table
+   I_ISGR_ERR_ISGR_PHGO2_BAD     -122056  Wrong size for correction tables
+                                          of 2nd calibration law
+
+   The program will exit with the ISDC_OK status on reading errors:
+   DAL3IBIS_NO_IBIS_EVENTS or DAL_TABLE_HAS_NO_ROWS. This occurs when input
+   group has no ISGRI events from S1 packet.
+   Above errors are written into the message log as level 1 Warning.
+
+
+BUGS
+
+   Not yet.
+
+AUTHOR
+   Christophe Couvreur, CEA/SAp Saclay, ccouvreu@cea.fr
+   Aymeric Sauvageon,   CEA/SAp Saclay, asauvageon@cea.fr
+   Philippe Laurent,    CEA/SAp Saclay, plaurent@.cea.fr
+
+SEE ALSO
+        ibis_isgr_cal_energy, ibis_comp_energy
