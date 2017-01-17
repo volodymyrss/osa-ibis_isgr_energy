@@ -84,12 +84,10 @@
  *  NP, 8.1  21/02/2012,   completely remove IREM counters
  *  PL, 8.2  02/04/2012,   modify coefficients PAR1_..._corrPH1 to correct <50 keV behavior
  *  CF, 8.3  05/11/2015,   SCREW 2624 path for low energy correction implemented with Paris agreement
+ *  VS, 9.0  17/01/2017,   substrantially rewritten, a lot of functionality moved to dal3ibis_calib
  ******************************************************************************/
 
 #include "ibis_isgr_energy.h"
-
-static const double DtempH1[8] = {0.43, -0.39, -0.77, 0.84, -0.78, 1.09, -0.08, -0.31};
-             /* delta from ISGRI mean temperature, to check probe temp2 is OK */
 
 /************************************************************************
  * FUNCTION:  ibis_isgr_energyWork
@@ -105,33 +103,23 @@ static const double DtempH1[8] = {0.43, -0.39, -0.77, 0.84, -0.78, 1.09, -0.08, 
  *
  * PARAMETERS:
  *  workGRP   dal_element *     in  DOL of the working group
- *  gti              int        in  0 to allow PRP with 0 rows (no OBT), 1 otherwise
- *  erase            int        in  0 to replace output columns, 1 to erase rows
- *  chatter          int        in  verbosity level
- *  acorName         char *     in  acorDOL string
- *  riseName         char *     in  riseDOL string
- *  phGainDOLstr     char *     in  phGainDOL string for 2nd calibration law
- *  phOffDOLstr      char *     in  phOffsetDOL string for 2nd calibration law
  * RETURN:            int     current status
  ************************************************************************/
+
 int ibis_isgr_energyWork(dal_element *workGRP,
-                         int          gti,
-                         int          erase,
-                         int          chatter,
-                         char        *acorName,
-                         char        *riseName,
-                         char        *phGainDOLstr,
-                         char        *phOffDOLstr)
+                         ibis_isgr_energy_settings *ptr_ibis_isgr_energy_settings,
+                         ibis_isgr_energy_settings *ptr_ISGRI_energy_caldb_dols,
+                         int chatter,
+                         int status)
 {
-  int    i, status = ISDC_OK,
+  int    i,
          freeStatus= ISDC_OK;
+
   long   numEvents = 0l,      /* number of S1 events   */
          buffSize,            /* size of output buffers in bytes */
          revol;               /* to calculate the PHA gain decrease */
+
   char  *logString=NULL,
-         hkName[11];
-  double meanT[8],               /* mean of the 8 mce temperatures */
-    meanBias[8] ;
 
   /* input data */
   DAL3_Word *isgriPha = NULL; /* ISGRI_PHA */
@@ -140,55 +128,28 @@ int ibis_isgr_energyWork(dal_element *workGRP,
   DAL3_Byte *isgriZ   = NULL; /* ISGRI_Z   */
 
   /* output data */
-  DAL3_Byte *isgrPi = NULL;   /* ISGRI_PI, now RT corr */
+  DAL3_Byte *isgrPi = NULL;  
   float *isgrEnergy = NULL;   /* ISGRI_ENERGY  */
+
   OBTime obtStart=DAL3_NO_OBTIME,
          obtEnd=DAL3_NO_OBTIME;
 
-  /* data from ISGRI_GO */
-  /* needs to be double otherwise 1E-6 differences */
-  double **goTab = NULL;
-  int     *pixTab= NULL;
+  ISGRI_energy_calibration_struct ISGRI_energy_calibration;
 
-  /* data from ISGRI-3DL2-MOD */
-  short *isgriRtTab=NULL;
-  /* new LUT2 3D, SPR 4537,before: float ***isgriRtTab=NULL; */
-
-  /*double *s_gh=NULL,*s_oh=NULL;*/ /*coefficients for rt effect*/
-
-  /*input parameters*/
   dal_element *in_table = NULL,
               *outTable = NULL;
+
   dal_element *isgrOffsTabPtr = NULL;
   dal_element *isgrRiseTabPtr = NULL;
   dal_element *isgrHK1_Ptr = NULL;
   dal_element *supGainTabPtr=NULL;
   dal_element *supOffsTabPtr=NULL;
 
-  /* coefficients for 2nd calibration method */
-  double *supCoeffg=NULL, *supCoeffo=NULL;
-
   do {
 
     if ((logString=(char *)calloc(DAL_BIG_STRING, sizeof(char))) == NULL) {
       status=I_ISGR_ERR_MEMORY;
       break;
-    }
-    /*#################################################################*/
-    /* Locate ISGR-EVTS-RAW bintable, for info: to know if ALL is used */
-    /*#################################################################*/
-    if (chatter > 3) {
-      status=DALobjectFindElement(workGRP, DS_ISGR_RAW, &in_table, status);
-      status=DALtableGetNumRows(in_table, &numEvents, status);
-      if (status != ISDC_OK) {
-        RILlogMessage(NULL, Log_0,
-                      "%13s bintable NOT found. Reverting to ISDC_OK", DS_ISGR_RAW);
-        status=ISDC_OK;
-        in_table=NULL;
-      }
-      else
-        RILlogMessage(NULL, Log_0, "%13s bintable found: %9ld rows.",
-                                  DS_ISGR_RAW, numEvents);
     }
 
     /*#################################################################*/
@@ -200,18 +161,10 @@ int ibis_isgr_energyWork(dal_element *workGRP,
                                     &isgriPha,
                                     &riseTime,
                                     &isgriY, &isgriZ);
+
     if ((status != ISDC_OK) || (numEvents == 0l))
       break;
-    if ((chatter > 2) && (gti))
-      RILlogMessage(NULL, Log_0, "OBT range: %020lld , %020lld", obtStart, obtEnd);
-    if ((obtStart < 0) || (obtEnd < 0)) {
-      if (gti) {
-        RILlogMessage(NULL, Warning_1, "At least one OBT limit is negative.");
-        RILlogMessage(NULL, Warning_1, "Using all ScW to calculate mean bias and temperature.");
-      }
-      obtStart=DAL3_NO_OBTIME;
-      obtEnd=DAL3_NO_OBTIME;
-    }
+
 
     /*#################################################################*/
     /* Check if output structures exist */
@@ -227,12 +180,14 @@ int ibis_isgr_energyWork(dal_element *workGRP,
     /* Check input data */
     /*#################################################################*/
     if (chatter > 3) RILlogMessage(NULL, Log_0, "Opening 4 calibration tables...");
+
     status=ibis_isgr_energyCheckIn(acorName, riseName,
-                                      phGainDOLstr, phOffDOLstr,
-                                      &isgrOffsTabPtr,
-                                      &isgrRiseTabPtr,
-                                      &supGainTabPtr,
-                                      &supOffsTabPtr);
+                                  phGainDOLstr, phOffDOLstr,
+                                  &isgrOffsTabPtr,
+                                  &isgrRiseTabPtr,
+                                  &supGainTabPtr,
+                                  &supOffsTabPtr);
+
     if (status != ISDC_OK) break;
 
     /*#################################################################*/
@@ -292,65 +247,23 @@ int ibis_isgr_energyWork(dal_element *workGRP,
                                    supCoeffg, supCoeffo);
     if (status != ISDC_OK) break;
 
-    /*#################################################################*/
-    /* Locate bintable for ISGRI temperature and bias */
-    /*#################################################################*/
-    status=DALobjectFindElement(workGRP, DS_ISGR_HK, &isgrHK1_Ptr, status);
-    if (status != ISDC_OK)
-      RILlogMessage(NULL, Warning_2, "%13s bintable NOT found.", DS_ISGR_HK);
-    else if (chatter > 2)
-      RILlogMessage(NULL, Log_0, "%13s bintable found.", DS_ISGR_HK);
+    statis=DAL3IBISupdateTBiasMDUCorrection(status);
 
-    for (i=0; i<8; i++) 
-      {
-	meanBias[i]=KEY_DEF_BIAS;
-	meanT[i]   =KEY_DEF_TEMP;
-      }
-
-    /*#################################################################*/
-    /* Calculation of Temperature*/
-    /*#################################################################*/
-   // status=ibis_energyIsgrHkCal(workGRP, obtStart, obtEnd,
-   //                             meanT, meanBias, chatter, status);
-    status=DAL3IBIS_MceIsgriHkCal(workGRP, obtStart, obtEnd,
-                                meanT, meanBias, chatter, status);
-    if (status != ISDC_OK) {
-      RILlogMessage(NULL, Warning_2, "Reverting from status=%d to ISDC_OK",
-                                    status);
-      RILlogMessage(NULL, Warning_2, "Using constant ISGRI temperature and bias (%+6.2f %+6.1f)",
-                                    KEY_DEF_TEMP, KEY_DEF_BIAS);
-    }
-    else if (chatter > 3) {
-      RILlogMessage(NULL, Log_0, "Mean ISGRI module bias (V):");
-      strcpy(logString, "");
-      for (i=0; i<8; i++) {
-        sprintf(hkName, " %+6.1f", meanBias[i]);
-        strcat(logString, hkName);
-      }
-      RILlogMessage(NULL, Log_0, logString);
-      RILlogMessage(NULL, Log_0, "Mean ISGRI module Temperature (C):");
-      strcpy(logString, "");
-      for (i=0; i<8; i++) {
-        sprintf(hkName, " %+6.1f", meanT[i]);
-        strcat(logString, hkName);
-      }
-      RILlogMessage(NULL, Log_0, logString);
-    }
-    status=ISDC_OK;
 
     /*#################################################################*/
     /* Perform energy correction */
     /*#################################################################*/
 
+    
 
-    status=DAL3IBISGetISGRIEnergy(workGRP,status);
+    status=DAL3IBISReconstructISGRIEnergy(workGRP,status);
 
     status=ibis_isgr_energyTransform(outTable, numEvents, revol,
                                  goTab, pixTab,isgriRtTab,
                                  supCoeffg, supCoeffo,
                                  chatter,
                                  meanT,
-				 meanBias,    
+	                			 meanBias,    
                                  isgriPha, riseTime,
                                  isgriY, isgriZ,
                                  isgrPi, isgrEnergy);
@@ -620,68 +533,31 @@ int ibis_isgr_energyCheckIn(
 }
 
 
-/************************************************************************
- * FUNCTION:  ibis_isgr_energyReadData
- * DESCRIPTION:
- *  Reads the S1 RAW events bintables.
- *  Returns ISDC_OK if everything is fine, else returns an error code.
- * ERROR CODES:
- *  DAL error codes
- *
- * PARAMETERS:
- *  workGRP  dal_element *    in   DOL of the working group
- *  gti              int      in   0 to allow PRP with 0 rows (no OBT), 1 otherwise
- *  chatter          int      in   verbosity level
- *  numEvents      long  *   out   length of the event list
- *  revol          long  *   out   revolution number
- *  obtStart     OBTime  *  in/out start of time range
- *  obtEnd       OBTime  *  in/out end   of time range
- *  isPha     DAL3_Word **   out   ISGRI_PHA 
- *  riseT     DAL3_Byte **   out   RISE_TIME 
- *  isY       DAL3_Byte **   out   ISGRI_Y 
- *  isZ       DAL3_Byte **   out   ISGRI_Z 
- * RETURN:            int     current status
- ************************************************************************/
-int ibis_isgr_energyReadData(dal_element *workGRP,
-                         int         gti,
-                         int         chatter,
-                         long       *numEvents,
-                         long       *revol,
-                         OBTime     *obtStart,
-                         OBTime     *obtEnd,
-                         DAL3_Word **isPha,
-                         DAL3_Byte **riseT,
-                         DAL3_Byte **isY,
-                         DAL3_Byte **isZ)
+int DAL3IBIS_read_ISGRI_events(dal_element *workGRP,
+                                 int gti,
+                                 ISGRI_events_struct *ISGRI_events,
+                                 int chatter,
+                                 int status)
+
 {
-  int    status = ISDC_OK;
   short  selected=0;
   long   buffSize;
+
   dal_dataType type;
   ISDCLevel    myLevel;
 
   do {
 
-    status=DALattributeGetInt(workGRP, "REVOL", revol, NULL, NULL, status);
-
-    if (status != ISDC_OK) {
-      RILlogMessage(NULL, Error_2, "Cannot get attribute REVOL in input group.");
-      break;
-    }
-
-  /*#################################################################*/
-  /* Select and get RAW events */
-  /*#################################################################*/
     selected=1;
     if (gti) myLevel=PRP;  else myLevel=RAW;
     status=DAL3IBISselectEvents(workGRP, ISGRI_EVTS, myLevel, gti,
                                 obtStart, obtEnd, NULL, status);
     status=DAL3IBISgetNumEvents(numEvents, status);
-    /* dal3gen>5.0.0 do not error any more with: -2504=DAL_TABLE_HAS_NO_ROWS */
+
     if ((status == DAL3IBIS_NO_IBIS_EVENTS) || (status == DAL_TABLE_HAS_NO_ROWS)) {
       RILlogMessage(NULL, Warning_1, "Reverting from status=%d to ISDC_OK", status);
       RILlogMessage(NULL, Warning_1, "NO event selected. Execution stopped.");
-      status=ISDC_OK;
+    //  status=ISDC_OK;
       *numEvents=0l;
       break;
     }
@@ -724,11 +600,23 @@ int ibis_isgr_energyReadData(dal_element *workGRP,
     type=DAL_BYTE;
     status=DAL3IBISgetEvents(ISGRI_Z,   &type, (void *)*isZ,   status);
     if (gti) {
-      type=DAL3_OBT;
-      status=DAL3IBISgetEventsBins(OB_TIME, &type, 1,1, obtStart, status);
-      buffSize= *numEvents;
-      status=DAL3IBISgetEventsBins(OB_TIME, &type, buffSize,buffSize,
-                                   obtEnd, status);
+        type=DAL3_OBT;
+        status=DAL3IBISgetEventsBins(OB_TIME, &type, 1,1, obtStart, status);
+        buffSize= *numEvents;
+        status=DAL3IBISgetEventsBins(OB_TIME, &type, buffSize,buffSize,
+                obtEnd, status);
+
+        if ((chatter > 2) && (gti))
+            RILlogMessage(NULL, Log_0, "OBT range: %020lld , %020lld", obtStart, obtEnd);
+
+        if ((obtStart < 0) || (obtEnd < 0)) {
+            if (gti) {
+                RILlogMessage(NULL, Warning_1, "At least one OBT limit is negative.");
+                RILlogMessage(NULL, Warning_1, "Using all ScW to calculate mean bias and temperature.");
+            }
+            obtStart=DAL3_NO_OBTIME;
+            obtEnd=DAL3_NO_OBTIME;
+        }
     }
     else {
       *obtStart=DAL3_NO_OBTIME;
@@ -741,6 +629,7 @@ int ibis_isgr_energyReadData(dal_element *workGRP,
 
   } while(0);
   if (selected > 0) status=DAL3IBIScloseEvents(status);
+
   return status;
 }
 
@@ -1022,195 +911,48 @@ int ibis_isgr_energyTransform   (dal_element *outTable,
 				 DAL3_Byte   *isgrPi,
 				 float       *isgrEnergy)
 {
-  int    status = ISDC_OK,
-    pixelNo,mce,
-         irt, ipha,ipha2;
-  long   i,j,              /* loop index */
-         index_cc,
-         infoEvt[7]={0, 0, 0, 0, 0, -99, 0};
-  double index_cc_real,deltin,delte;
-  double gt[ISGRI_N_PIX],
-         gh[ISGRI_N_PIX],
-         ot[ISGRI_N_PIX],
-         oh[ISGRI_N_PIX] ;  /*lut1 coefficients*/
-  double gain_corrPH1,offset_corrPH1, /*correction coefficient for the first law*/
-         rt, pha,
-         ener, corr;
-  double random_num;
+    int    status = ISDC_OK,
+    long   j,              /* loop index */
+           infoEvt[7]={0, 0, 0, 0, 0, -99, 0};
 
-  double slopeMDU[8]={-1.8,-2.0,-2.3,-2.7,-0.5,-2.4,-0.8,-0.5} ;
-  
-  /*------------ variables for new method -----------*/
-  /*correction coefficients for the second law */
-  double *gain_corrPH2=NULL,
-         *offset_corrPH2=NULL,
-	  off_scale=0.,g_scale=1.,
-          Ec=50.,*Chc=NULL;/*Threshold in keV and in channel to 
-                             apply both calibration method*/
-do {
-  status=I_ISGR_ERR_MEMORY;
-  gain_corrPH2=(double*)calloc(ISGRI_RT_N_DATA ,sizeof(double));
-  if (gain_corrPH2 == NULL) break;
-  offset_corrPH2=(double*)calloc(ISGRI_RT_N_DATA ,sizeof(double));
-  if (offset_corrPH2 == NULL) break;
+    do {
+        for (j=0L; j < numEvents; j++)  {
 
-  Chc=(double*)calloc(ISGRI_RT_N_DATA ,sizeof(double));
-  if (Chc == NULL) break;
-  status=ISDC_OK;
+            DAL3IBISReconstructISGRIEnergy(isgriPha,
+                    riseTime,
+                    isgriY,
+                    isgriZ,
+                    ISGRI_energy_correction,
+                    &isgri_energy,
+                    &isgri_pi,
+                    &infoEvt,
+                    int status);
 
-  for (j=0;j<8;j++) 
-    {
-      meanTemp[j]=(meanTemp[j]+273.0)/273.0; /* to scale temperature in ratio to minimum Kelvin */
-      meanBias[j]=-meanBias[j]/100. ;
-      meanBias[j]=1.2 ;
-    }
+        };
 
-  for (i=0;i<128;i++)
-    for (j=0;j<128;j++)
-      {
-	pixelNo = 128*i+j;
-	mce     = 7 - j/32 - 4*(i/64);
-	gh[pixelNo] = isgriGoTab[0][pixelNo]*pow(meanTemp[mce],-1.11)*pow(meanBias[mce],-0.0832);
-	oh[pixelNo] = isgriGoTab[1][pixelNo]*pow(meanTemp[mce],slopeMDU[mce])*pow(meanBias[mce],0.0288);
-	gt[pixelNo] = isgriGoTab[2][pixelNo]*pow(meanTemp[mce],0.518)*pow(meanBias[mce],0.583);
-	ot[pixelNo] = isgriGoTab[3][pixelNo]*pow(meanTemp[mce],0.625)*pow(meanBias[mce],0.530);
-      }
-  
-  /*Law 1 correction: offset = law 2(revol=0,RT=0) fixed, gain calibration with W line
-  par[12]_[gain,offset]_corrPH1 must also be defined in ii_shadow_build_types.h*/
-  gain_corrPH1   = PAR1_GAIN_corrPH1+PAR2_GAIN_corrPH1*revol;
-  offset_corrPH1 = PAR1_OFFSET_corrPH1;
+        if (chatter > 1) {
+            RILlogMessage(NULL, Log_1, "Total COR rise-time <= -1: %9ld", infoEvt[0]);
+            RILlogMessage(NULL, Log_1, "Total COR rise-time >=256: %9ld", infoEvt[1]);
+          //  ener=(double)infoEvt[4]/1000.;
+         //   corr=(double)infoEvt[5]/1000.;
+         //   RILlogMessage(NULL, Log_1, "COR rise-time interval: %4.1f to %5.1f", ener,corr);
+            RILlogMessage(NULL, Log_1, "Total COR amplitude <= -1: %9ld", infoEvt[2]);
+            RILlogMessage(NULL, Log_1, "Total COR amplitude>=2048: %9ld", infoEvt[3]);
+            RILlogMessage(NULL, Log_1, "Total with LUT2 coef. <=0: %9ld",
+                    infoEvt[6]-infoEvt[2]);
+        }
 
-  // VS: law 1  evolving correction
-  if (revol > 1300) {
-      gain_corrPH1   += pow((revol-1300.)/(1600.-1300.),2.)*0.1; 
-      offset_corrPH1 += pow((revol-1300.)/(1600.-1300.),2.)*1.4; 
-  }
+        /*#################################################################*/
+        /* Put computed columns into the output table */
+        /*#################################################################*/
+        status=DALtablePutCol(outTable, "ISGRI_PI", 0, DAL_BYTE, numEvents,
+                isgrPi, status);
+        status=DALtablePutCol(outTable, "ISGRI_ENERGY", 0, DAL_FLOAT, numEvents,
+                isgrEnergy, status);
+        if (status != ISDC_OK)
+            RILlogMessage(NULL, Error_2, "Cannot write output data. Status=%d", status);
+        status=CommonStampObject(outTable, "Energy correction.", status);
 
-
-  
-  g_scale = G_SCALE0+G_SCALE1*revol;
-  off_scale = OFF_SCALE0;
-
-  for (irt=0; irt<256; irt++) {
-    gain_corrPH2[irt]   = supCoeffg[irt+0*ISGRI_RT_N_DATA] + supCoeffg[irt+1*ISGRI_RT_N_DATA]*revol;
-    offset_corrPH2[irt] = supCoeffo[irt+0*ISGRI_RT_N_DATA] + supCoeffo[irt+1*ISGRI_RT_N_DATA]*revol + supCoeffo[irt+2*ISGRI_RT_N_DATA]*revol*revol;
-    Chc[irt]=0.; 
-    if (gain_corrPH1!=gain_corrPH2[irt]) {
-      Ec=(offset_corrPH2[irt]-offset_corrPH1)/(gain_corrPH1-gain_corrPH2[irt]);
-      Chc[irt]=Ec*gain_corrPH1+offset_corrPH1;
-    }
-  }
-
-  if (chatter > 2) {
-    RILlogMessage(NULL, Log_0, "GAIN1, OFFSET1 for PHA        : %8.6f  %8.4f",
-                              gain_corrPH1, offset_corrPH1);
-    RILlogMessage(NULL, Log_0, "GAIN2, OFFSET2 for PHA (RT=35): %8.6f  %8.4f",
-                              gain_corrPH2[35], offset_corrPH2[35]);
-    RILlogMessage(NULL, Log_0, "Equal energy for laws  (RT=35): %5.2f keV",
-                              (Chc[35]-offset_corrPH1)/gain_corrPH1 );
-  }
- 
-  /*#################################################################*/
-  /* Compute corrected energies  */
-  /*#################################################################*/
-    for (j=0L; j < numEvents; j++)  {
-      
-      /*--- LUT1 corrections ---*/
-      pixelNo = 128*(int)isgriY[j] + (int)isgriZ[j];
-
-    rt = 2.*riseTime[j]/2.4+5.0;  /* 256 channels for LUT2 calibration scaled */
-    rt = rt*gt[pixelNo] + ot[pixelNo];
-
-    pha = isgriPha[j]*gh[pixelNo] + oh[pixelNo];
-
-    /*--- drift correction ---*/
-    /*rt=(rt-offset_corrRT)/gain_corrRT; Rt effect included into PH gain2 and offset2*/
-    corr=rt*1000.;
-    if (corr > infoEvt[5]) infoEvt[5]=corr;
-    else if (corr < infoEvt[4]) infoEvt[4]=corr;
-
-    if ((rt-floor(rt)) <0.5) irt = (long)floor(rt) ;
-        else irt = (long)ceil(rt);
-    /* if rise-time out of range take LUT2 limit, SPR 4549 */
-    if (irt < 0)        {irt=0;   infoEvt[0]++;}
-    else if (irt > 255) {irt=255; infoEvt[1]++;}
-
-    random_num=DAL3GENrandomDoubleX1()-0.5;
-    if (pha < Chc[irt]) pha=(pha+random_num-offset_corrPH1)/gain_corrPH1;
-    else           pha=(pha+random_num-offset_corrPH2[irt])/gain_corrPH2[irt];
-    pha=  2*(pha-off_scale)/g_scale;
-    ipha= (int)pha;
-
-    /*random_num=500.0*rand()/(1+(double)RAND_MAX);*/
-    random_num=500.0*DAL3GENrandomDoubleX1();
-
-
-   if ((ipha >= 0) && (ipha < 2048)) {
-      /*ener = (double) 2.0*isgriRtTab[(int)(pha/2.0)][irt][(int)random_num]/30.0;*/
-      if ((pha/2.0-floor(pha/2.0)) <0.5) ipha2 = (long)floor(pha/2.0) ;
-        else ipha2 = (long)ceil(pha/2.0);
-      index_cc= ipha2
-	+ISGRI_RT_N_ENER_SCALED*irt
-                    +ISGRI_RT_N_ENER_SCALED*ISGRI_RT_N_DATA*(long)random_num;
-      /*NP Piotr start*/
-      index_cc_real=pha/2.0
-	+ISGRI_RT_N_ENER_SCALED*(long)irt
-	+ISGRI_RT_N_ENER_SCALED*ISGRI_RT_N_DATA*(long)random_num;
-      deltin = index_cc_real-(double)index_cc;
-      if (index_cc+1<ISGRI_RT_N_ENER_SCALED*ISGRI_RT_N_DATA*ISGRI_RT_N_RANDOM_DIM){
-        delte = deltin*((double)isgriRtTab[index_cc+1]-(double)isgriRtTab[index_cc]);
-      }
-      else{
-        delte=0;
-      }
-      ener=FINALOFFS+((double)isgriRtTab[index_cc]+delte)/30.0;
-      /*NP Piotr end*/
-    }
-    else if (ipha >= 2048) {
-      /*ener =(double) 2.0*isgriRtTab[(int)(ISGRI_RT_N_ENER/2.0-1)][irt][(int)random_num]/30.0;*/
-      index_cc= ISGRI_RT_N_ENER_SCALED-1
-               +ISGRI_RT_N_ENER_SCALED*(long)irt
-               +ISGRI_RT_N_ENER_SCALED*ISGRI_RT_N_DATA*(long)random_num;
-      ener=FINALOFFS+(double)isgriRtTab[index_cc]/30.0;
-      infoEvt[3]++;
-    }
-    else {ener=0.0; infoEvt[2]++;}
-
-    if (ener <= FINALOFFS) { isgrEnergy[j] = 0.0;  /* if, by mistake, isgriRtTab<0*/
-                             infoEvt[6]++;}        /* replace 0 by 1.3664, SPR 4664 */
-    else isgrEnergy[j] = (float)ener;
-
-    isgrPi[j]=(DAL3_Byte)irt;
-
-  }
-  if (chatter > 1) {
-    RILlogMessage(NULL, Log_1, "Total COR rise-time <= -1: %9ld", infoEvt[0]);
-    RILlogMessage(NULL, Log_1, "Total COR rise-time >=256: %9ld", infoEvt[1]);
-    ener=(double)infoEvt[4]/1000.;
-    corr=(double)infoEvt[5]/1000.;
-    RILlogMessage(NULL, Log_1, "COR rise-time interval: %4.1f to %5.1f", ener,corr);
-    RILlogMessage(NULL, Log_1, "Total COR amplitude <= -1: %9ld", infoEvt[2]);
-    RILlogMessage(NULL, Log_1, "Total COR amplitude>=2048: %9ld", infoEvt[3]);
-    RILlogMessage(NULL, Log_1, "Total with LUT2 coef. <=0: %9ld",
-                              infoEvt[6]-infoEvt[2]);
-  }
-
-  /*#################################################################*/
-  /* Put computed columns into the output table */
-  /*#################################################################*/
-  status=DALtablePutCol(outTable, KEY_COL_OUT, 0, DAL_BYTE, numEvents,
-                        isgrPi, status);
-  status=DALtablePutCol(outTable, "ISGRI_ENERGY", 0, DAL_FLOAT, numEvents,
-                        isgrEnergy, status);
-  if (status != ISDC_OK)
-    RILlogMessage(NULL, Error_2, "Cannot write output data. Status=%d", status);
-  status=CommonStampObject(outTable, "Energy correction.", status);
-
-} while (0);
-  /*--------- free memory ---------------------*/
-  if (gain_corrPH2 !=NULL) free(gain_corrPH2);
-  if (offset_corrPH2 !=NULL) free(offset_corrPH2);
-  if (Chc != NULL) free(Chc);
-  return status;
+    } while (0);
+    return status;
 }

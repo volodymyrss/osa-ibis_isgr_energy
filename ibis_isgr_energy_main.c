@@ -46,25 +46,126 @@
 #include "ibis_isgr_energy.h" 
 
 
+int get_all_PIL(ibis_isgr_energy_settings_struct *ptr_ibis_isgr_energy_settings, ISGRI_energy_caldb_dols_struct *ptr_ISGRI_energy_caldb_dols, chatter, status) {
+    char  randName[DAL_BIG_STRING];
+    unsigned long seed;
+
+    status=PILGetInt("chatter", &chatter);
+    if (status != ISDC_OK) return status;
+    RILlogMessage(NULL, Log_2, "Verbosity level = %d", chatter);
+
+    status=PILGetBool("useGTI", &ptr_ibis_isgr_energy_settings->gti);
+    if (status != ISDC_OK) return status;
+
+    if (chatter > 0) {
+        if (ptr_ibis_isgr_energy_settings->gti)
+            RILlogMessage(NULL, Log_2,"Number of GTI: 1 (PRP must contain OBTs)");
+        else
+            RILlogMessage(NULL, Log_2,"Number of GTI: 0 (PRP can have 0 OBT)");
+    }
+
+    status=PILGetBool("eraseALL", &ptr_ibis_isgr_energy_settings->erase);
+    if (status != ISDC_OK) return status;
+
+    if (chatter > 0) {
+        if (ptr_ibis_isgr_energy_settings->erase)
+            RILlogMessage(NULL, Log_2,"Erase output rows");
+        else
+            RILlogMessage(NULL, Log_2,"Replace output columns");
+    }
+    status=PILGetString("randSeed", randName);
+    if (status != ISDC_OK) {
+        RILlogMessage(NULL, Error_2, "The parameter 'randSeed' is not found.");
+        return status;
+    }
+    if (strlen(randName) > 0) {
+        seed=strtoul(randName, (char **)NULL, 10);
+        if (seed == ULONG_MAX) {
+            RILlogMessage(NULL, Error_2, "Parameter 'randSeed' interval: 0<=  <%lu",
+                    ULONG_MAX);
+            status=I_ISGR_ERR_BAD_INPUT;
+            return status;
+        }
+        RILlogMessage(NULL, Log_2, "Seed for random number generator: %010lu", seed);
+        DAL3GENrandomSeed(seed);
+    }
+
+    status=PILGetString("riseDOL", ptr_ISGRI_energy_caldb_dols->riseDOLstr);
+    if (status != ISDC_OK) return status;
+
+    if (strlen(riseDOLstr) == 0) {
+        RILlogMessage(NULL, Error_2, "The parameter 'riseDOL' is empty");
+        status=I_ISGR_ERR_BAD_INPUT;
+        return status;
+    }
+
+    status=PILGetString("GODOL", ptr_ISGRI_energy_caldb_dols->acorDOLstr);
+    if (status != ISDC_OK) return status;
+
+    if (strlen(acorDOLstr) == 0) {
+        RILlogMessage(NULL, Error_2, "The parameter 'GODOL' is empty");
+        status=I_ISGR_ERR_BAD_INPUT;
+        return status;
+    }
+
+    status=PILGetString("supGDOL", ptr_ISGRI_energy_caldb_dols->phGainDOLstr);
+    if (status != ISDC_OK) return status;
+
+    if (strlen(phGainDOLstr) == 0) {
+        RILlogMessage(NULL, Error_2, "The parameter 'supGDOL' is empty");
+        status=I_ISGR_ERR_BAD_INPUT;
+        return status;
+    }
+
+    status=PILGetString("supODOL", ptr_ISGRI_energy_caldb_dols->phOffsDOLstr);
+    if (status != ISDC_OK) return status;
+
+    if (strlen(phOffsDOLstr) == 0) {
+        RILlogMessage(NULL, Error_2, "The parameter 'supODOL' is empty");
+        status=I_ISGR_ERR_BAD_INPUT;
+        return status;
+    } 
+
+    status=CommonPreparePARsStrings("inGRP",
+            "inRawEvts,hkCnvDOL",
+            "outGRP",
+            "outCorEvts",
+            makeUnique,
+            &workGRP,
+            &ptr_ibis_isgr_energy_settings->clobber,
+            status);
+
+    if (status == GROUP_NOT_FOUND) {
+        RILlogMessage(NULL, Error_2, "Program aborted: GROUP not found.");
+        return status;
+    }
+    else if (status != ISDC_OK) {
+        RILlogMessage(NULL, Error_2, "CommonPreparePARsStrings error. Status=%d",
+                status);
+        return status;
+    }
+}
+  
+void parse_error(status) {
+    switch (status) {
+        case ISDC_OK:
+            break;
+        case I_ISGR_ERR_MEMORY: 
+            RILlogMessage(NULL, Error_2, "Program aborted: memory allocation error.");
+            break;
+    }
+}
+
 int main (int argc, char *argv[])
 {
-  int   status = ISDC_OK,
-        makeUnique = 1,
-        clobber,
-        gti,
-        erase, chatter;
+  int   status = ISDC_OK;
 
-  char *riseDOLstr = NULL,
-       *acorDOLstr = NULL,
-   /*  *switDOLstr = NULL,*/
-   /*  *rteffectDOLstr = NULL,*/
-       *phGainDOLstr=NULL,
-    *phOffsDOLstr=NULL ;
-  char  randName[DAL_BIG_STRING];
-  unsigned long seed;
+  ibis_isgr_energy_settings_struct ibis_isgr_energy_settings;
+  ISGRI_energy_caldb_dols_struct ISGRI_energy_caldb_dols;
   dal_element  *workGRP = NULL;
+  
+  ibis_isgr_energy_settings.makeUnique = 1,
 
-  /* initialize the common library stuff */
   status=CommonInit(COMPONENT_NAME, COMPONENT_VERSION, argc, argv);
   if (status != ISDC_SINGLE_MODE) {
     RILlogMessage(NULL, Warning_2, "CommonInit status = %d", status);
@@ -73,149 +174,15 @@ int main (int argc, char *argv[])
     RILlogMessage(NULL, Warning_2, "Program aborted : could not initialize.");
     CommonExit(status);
   }
-  do {
-    status=I_ISGR_ERR_MEMORY;
-    if ( (riseDOLstr=(char *)calloc(DAL_FILE_NAME_STRING, sizeof(char))) == NULL)
-      break;
-    if ( (acorDOLstr=(char *)calloc(DAL_FILE_NAME_STRING, sizeof(char))) == NULL)
-      break;
-    /*if ( (switDOLstr=(char *)calloc(DAL_FILE_NAME_STRING, sizeof(char))) == NULL)
-      break;*/
-    /*if ( (rteffectDOLstr=(char *)calloc(DAL_FILE_NAME_STRING, sizeof(char))) == NULL)
-      break;*/
-    if ( (phGainDOLstr=(char *)calloc(DAL_FILE_NAME_STRING, sizeof(char))) == NULL)
-      break;
-    if ( (phOffsDOLstr=(char *)calloc(DAL_FILE_NAME_STRING, sizeof(char))) == NULL)
-      break;
-    status=ISDC_OK;
-  /*#################################################################*/
-  /* get the parameters */
-  /*#################################################################*/
-    status=PILGetInt("chatter", &chatter);
-    if (status != ISDC_OK) break;
-    RILlogMessage(NULL, Log_2, "Verbosity level = %d", chatter);
 
-    status=PILGetBool("useGTI", &gti);
-    if (status != ISDC_OK) break;
-    if (chatter > 0) {
-      if (gti)
-        RILlogMessage(NULL, Log_2,"Number of GTI: 1 (PRP must contain OBTs)");
-      else
-        RILlogMessage(NULL, Log_2,"Number of GTI: 0 (PRP can have 0 OBT)");
-    }
-    status=PILGetBool("eraseALL", &erase);
-    if (status != ISDC_OK) break;
-    if (chatter > 0) {
-      if (erase)
-        RILlogMessage(NULL, Log_2,"Erase output rows");
-      else
-        RILlogMessage(NULL, Log_2,"Replace output columns");
-    }
-    /*SPR 4664 ----*/
-    /*status=PILGetInt("RTdriftCor", &RTdriftCor);
-    if (status != ISDC_OK) break;
-    switch (RTdriftCor){
-    case 0: 
-      RILlogMessage(NULL, Log_2,"RT corrections are not taken into account.");
-      break;
-    case 1: 
-      RILlogMessage(NULL, Log_2,"RT gain and offset are taken into account.");
-      break;
-    case 2: 
-      RILlogMessage(NULL, Log_2,"All RT corrections are taken into account.");
-      break;
-    default : 
-      status=I_ISGR_ERR_BAD_INPUT;
-      RILlogMessage(NULL, Error_2,"Bad Value for the parameter RTdriftCor");
-    }
-    if (status != ISDC_OK) break;*/
-    /*--------*/
+  status=get_all_PIL(&ibis_isgr_energy_settings,&ISGRI_energy_caldb_dols,&chatter,status);
 
-    status=PILGetString("randSeed", randName);
-    if (status != ISDC_OK) {
-      RILlogMessage(NULL, Error_2, "The parameter 'randSeed' is not found.");
-      break;
-    }
-    if (strlen(randName) > 0) {
-      seed=strtoul(randName, (char **)NULL, 10);
-      if (seed == ULONG_MAX) {
-        RILlogMessage(NULL, Error_2, "Parameter 'randSeed' interval: 0<=  <%lu",
-                                    ULONG_MAX);
-        status=I_ISGR_ERR_BAD_INPUT;
-        break;
-      }
-      RILlogMessage(NULL, Log_2, "Seed for random number generator: %010lu", seed);
-      DAL3GENrandomSeed(seed);
-    }
+  status=ibis_isgr_energyWork(workGRP, &ibis_isgr_energy_settings, &ISGRI_energy_caldb_dols,chatter,status);
 
-    status=PILGetString("riseDOL", riseDOLstr);
-    if (status != ISDC_OK) break;
-    if (strlen(riseDOLstr) == 0) {
-      RILlogMessage(NULL, Error_2, "The parameter 'riseDOL' is empty");
-      status=I_ISGR_ERR_BAD_INPUT;
-      break;
-    }
-    status=PILGetString("GODOL", acorDOLstr);
-    if (status != ISDC_OK) break;
-    if (strlen(acorDOLstr) == 0) {
-      RILlogMessage(NULL, Error_2, "The parameter 'GODOL' is empty");
-      status=I_ISGR_ERR_BAD_INPUT;
-      break;
-    }
+  parse_error(status);
 
-    status=PILGetString("supGDOL", phGainDOLstr);
-    if (status != ISDC_OK) break;
-    if (strlen(phGainDOLstr) == 0) {
-      RILlogMessage(NULL, Error_2, "The parameter 'supGDOL' is empty");
-      status=I_ISGR_ERR_BAD_INPUT;
-      break;
-    }
-    status=PILGetString("supODOL", phOffsDOLstr);
-    if (status != ISDC_OK) break;
-    if (strlen(phOffsDOLstr) == 0) {
-      RILlogMessage(NULL, Error_2, "The parameter 'supODOL' is empty");
-      status=I_ISGR_ERR_BAD_INPUT;
-      break;
-    } /* hkCnvDOL was erased (so useless !) since 5.6.0 */
-    status=CommonPreparePARsStrings("inGRP",
-                                    "inRawEvts,hkCnvDOL",
-                                    "outGRP",
-                                    "outCorEvts",
-                                    makeUnique,
-                                    &workGRP,
-                                    &clobber,
-                                    status);
-    if (status == GROUP_NOT_FOUND) {
-      RILlogMessage(NULL, Error_2, "Program aborted: GROUP not found.");
-      break;
-    }
-    else if (status != ISDC_OK) {
-      RILlogMessage(NULL, Error_2, "CommonPreparePARsStrings error. Status=%d",
-                                  status);
-      break;
-    }
-
-  /*#################################################################*/
-  /* do the work */
-  /*#################################################################*/
-    status=ibis_isgr_energyWork(workGRP, gti, erase, chatter,
-                                acorDOLstr, riseDOLstr,
-                                phGainDOLstr, phOffsDOLstr);
-    if (status == I_ISGR_ERR_MEMORY) {
-      RILlogMessage(NULL, Error_2, "Program aborted: memory allocation error.");
-    }
-    if (workGRP != NULL) status=CommonCloseSWG(workGRP, status);
-    /* if error while closing, status is only changed if it was ISDC_OK */
-
-  } while(0);
-
-  if (riseDOLstr != NULL) free(riseDOLstr);
-  if (acorDOLstr != NULL) free(acorDOLstr);
-  /*if(switDOLstr !=NULL) free(switDOLstr);*/
-  /*if(rteffectDOLstr !=NULL) free(rteffectDOLstr);*/
-  if (phGainDOLstr != NULL) free(phGainDOLstr);
-  if (phOffsDOLstr != NULL) free(phOffsDOLstr);
+  if (workGRP != NULL) status=CommonCloseSWG(workGRP, status);
 
   CommonExit(status);
-  return(status);   /* to make lint happy */
+  return(status); 
 }

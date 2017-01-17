@@ -131,6 +131,21 @@
 #define PAR2_GAIN_corrPH1   -0.00061
 #define PAR1_OFFSET_corrPH1 -5.655
 
+
+typedef struct {
+    char riseDOLstr[DAL_FILE_NAME_STRING]; 
+    char acorDOLstr[DAL_FILE_NAME_STRING];
+    char phGainDOLstr[DAL_FILE_NAME_STRING];
+    char phOffsDOLstr[DAL_FILE_NAME_STRING];
+} ISGRI_energy_caldb_dols_struct;
+
+typedef struct  {
+    int makeUnique,
+        clobber,
+        gti,
+        erase, chatter;
+} ibis_isgr_energy_settings_struct;
+
 int ibis_isgr_energyWork(dal_element *workGRP,
                          int          gti,
                          int          erase,
