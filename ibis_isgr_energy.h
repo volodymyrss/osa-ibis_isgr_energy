@@ -64,6 +64,7 @@
 
 #include "isdc.h"
 #include "dal3ibis.h"
+#include "dal3ibis_calib.h"
 #include "dal3hk.h"
 
 #define COMPONENT_NAME           "ibis_isgr_energy"
@@ -146,14 +147,13 @@ typedef struct  {
         erase, chatter;
 } ibis_isgr_energy_settings_struct;
 
+
 int ibis_isgr_energyWork(dal_element *workGRP,
-                         int          gti,
-                         int          erase,
-                         int          chatter,
-                         char        *acorName,
-                         char        *riseName,
-                         char        *phGainDOLstr,
-                         char        *phOffDOLstr);
+                        ibis_isgr_energy_settings_struct *ptr_ibis_isgr_energy_settings,
+                        ISGRI_energy_caldb_dols_struct *ptr_ISGRI_energy_caldb_dols,
+                        int chatter,
+                        int status);
+
 
 int ibis_isgr_energyCheckIn(
                          char         *acorName,
@@ -177,12 +177,13 @@ int ibis_isgr_energyReadData(dal_element *workGRP,
                          DAL3_Byte **isY,
                          DAL3_Byte **isZ);
 
-int ibis_isgr_energyCheckOut(dal_element *workGRP,
-                         char         *outName,
-                         int           chatter,
-                         long          numEvents,
-                         int           erase,
-                         dal_element **outTable);
+
+int ibis_isgr_energyWork(dal_element *workGRP,
+                        ibis_isgr_energy_settings_struct *ptr_ibis_isgr_energy_settings,
+                        ISGRI_energy_caldb_dols_struct *ptr_ISGRI_energy_caldb_dols,
+                        int chatter,
+                        int status);
+
 
 int ibis_isgr_energyReadCal(dal_element *isgrOffsTabPtr,
                          dal_element    *isgrRiseTabPtr,

@@ -13,7 +13,7 @@ SUBDIRS			=
 C_EXEC_1_NAME		= ibis_isgr_energy
 C_EXEC_1_SOURCES	= ibis_isgr_energy_main.c ibis_isgr_energy.c
 C_EXEC_1_OBJECTS	= ibis_isgr_energy_main.o ibis_isgr_energy.o
-C_EXEC_1_LIBRARIES	= -ldal3ibis -ldal3hk -ldal3gen -lcommon -ldal -lril -lpil -lcfitsio ${LAST_LIBS}
+C_EXEC_1_LIBRARIES	= -ldal3ibis -ldal3aux -ldal3hk -ldal3gen -lcommon -ldal -lril -lpil -lcfitsio -lISDCroot ${LAST_LIBS}
 
 ${C_EXEC_1_NAME}:	${C_EXEC_1_OBJECTS}
 			${CC}  ${ALL_C_CFLAGS} -o ${C_EXEC_1_NAME} ${C_EXEC_1_OBJECTS} ${ALL_C_LDFLAGS} ${C_EXEC_1_LIBRARIES}

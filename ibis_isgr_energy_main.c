@@ -46,7 +46,11 @@
 #include "ibis_isgr_energy.h" 
 
 
-int get_all_PIL(ibis_isgr_energy_settings_struct *ptr_ibis_isgr_energy_settings, ISGRI_energy_caldb_dols_struct *ptr_ISGRI_energy_caldb_dols, chatter, status) {
+int get_all_PIL(dal_element **ptr_workGRP,
+                ibis_isgr_energy_settings_struct *ptr_ibis_isgr_energy_settings,
+                ISGRI_energy_caldb_dols_struct *ptr_ISGRI_energy_caldb_dols,
+                int *chatter,
+                int status) {
     char  randName[DAL_BIG_STRING];
     unsigned long seed;
 
@@ -93,6 +97,7 @@ int get_all_PIL(ibis_isgr_energy_settings_struct *ptr_ibis_isgr_energy_settings,
     status=PILGetString("riseDOL", ptr_ISGRI_energy_caldb_dols->riseDOLstr);
     if (status != ISDC_OK) return status;
 
+/*h
     if (strlen(riseDOLstr) == 0) {
         RILlogMessage(NULL, Error_2, "The parameter 'riseDOL' is empty");
         status=I_ISGR_ERR_BAD_INPUT;
@@ -125,13 +130,14 @@ int get_all_PIL(ibis_isgr_energy_settings_struct *ptr_ibis_isgr_energy_settings,
         status=I_ISGR_ERR_BAD_INPUT;
         return status;
     } 
+    */
 
     status=CommonPreparePARsStrings("inGRP",
             "inRawEvts,hkCnvDOL",
             "outGRP",
             "outCorEvts",
-            makeUnique,
-            &workGRP,
+            &ptr_ibis_isgr_energy_settings->makeUnique,
+            ptr_workGRP,
             &ptr_ibis_isgr_energy_settings->clobber,
             status);
 
@@ -158,7 +164,8 @@ void parse_error(status) {
 
 int main (int argc, char *argv[])
 {
-  int   status = ISDC_OK;
+  int  status = ISDC_OK;
+  int chatter;
 
   ibis_isgr_energy_settings_struct ibis_isgr_energy_settings;
   ISGRI_energy_caldb_dols_struct ISGRI_energy_caldb_dols;
@@ -175,7 +182,7 @@ int main (int argc, char *argv[])
     CommonExit(status);
   }
 
-  status=get_all_PIL(&ibis_isgr_energy_settings,&ISGRI_energy_caldb_dols,&chatter,status);
+  status=get_all_PIL(&workGRP,&ibis_isgr_energy_settings,&ISGRI_energy_caldb_dols,&chatter,status);
 
   status=ibis_isgr_energyWork(workGRP, &ibis_isgr_energy_settings, &ISGRI_energy_caldb_dols,chatter,status);
 
