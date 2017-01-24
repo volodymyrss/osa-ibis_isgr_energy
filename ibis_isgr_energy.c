@@ -126,6 +126,8 @@ int ibis_isgr_energyWork(dal_element *workGRP,
     status=DAL3IBIS_correct_LUT1_for_temperature_bias(workGRP,&ISGRI_energy_calibration,&ISGRI_events,chatter,status);
 
     status=DAL3IBIS_populate_newest_LUT2(&ISGRI_events,&ISGRI_energy_calibration,chatter,status);
+    
+    status=DAL3IBIS_populate_newest_LUT2_rapid_evolution(&ISGRI_events,&ISGRI_energy_calibration,chatter,status);
 
     status=DAL3IBIS_reconstruct_ISGRI_energies(&ISGRI_energy_calibration,&ISGRI_events,chatter,status);
 
