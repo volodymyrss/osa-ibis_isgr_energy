@@ -116,24 +116,31 @@ int ibis_isgr_energyWork(dal_element *workGRP,
            freeStatus= ISDC_OK;
     char  logString[DAL_BIG_STRING];
 
-    ISGRI_events_struct ISGRI_events;
+    IBIS_events_struct IBIS_events;
     ISGRI_energy_calibration_struct ISGRI_energy_calibration;
 
-    status=DAL3IBIS_read_ISGRI_events(workGRP,&ISGRI_events,ptr_ibis_isgr_energy_settings->gti,chatter,status);
-    status=DAL3IBIS_init_ISGRI_energy_calibration(&ISGRI_energy_calibration,status);
+    TRY_BLOCK_BEGIN
 
-    status=DAL3IBIS_populate_newest_LUT1(&ISGRI_events,&ISGRI_energy_calibration,chatter,status);
-    status=DAL3IBIS_correct_LUT1_for_temperature_bias(workGRP,&ISGRI_energy_calibration,&ISGRI_events,chatter,status);
+        TRY( DAL3IBIS_print_all_events(workGRP,status), status, "showing events" );
 
-    status=DAL3IBIS_populate_newest_LUT2(&ISGRI_events,&ISGRI_energy_calibration,chatter,status);
-    
-    status=DAL3IBIS_populate_newest_LUT2_rapid_evolution(&ISGRI_events,&ISGRI_energy_calibration,chatter,status);
+        TRY( DAL3IBIS_read_IBIS_events(workGRP,ISGRI_EVTS,&IBIS_events,ptr_ibis_isgr_energy_settings->gti,chatter,status), -1, "reading events" );
 
-    status=DAL3IBIS_reconstruct_ISGRI_energies(&ISGRI_energy_calibration,&ISGRI_events,chatter,status);
+        TRY( DAL3IBIS_init_ISGRI_energy_calibration(&ISGRI_energy_calibration,status), status, "initializing ISGRI energy calibration");
+
+        TRY( DAL3IBIS_populate_newest_DS(&IBIS_events, &ISGRI_energy_calibration, DS_ISGR_LUT1, &DAL3IBIS_open_LUT1, &DAL3IBIS_read_LUT1,chatter,status), status, "reading LUT1" );
+        TRY( DAL3IBIS_correct_LUT1_for_temperature_bias(workGRP,&ISGRI_energy_calibration,&IBIS_events,chatter,status), status, "correcting for LUT1 temperature bias");
+
+        TRY( DAL3IBIS_populate_newest_DS(&IBIS_events, &ISGRI_energy_calibration, DS_ISGR_MCEC, &DAL3IBIS_open_MCEC, &DAL3IBIS_read_MCEC, chatter,status), status, "loading MCE evolution correction");
+        TRY( DAL3IBIS_populate_newest_DS(&IBIS_events, &ISGRI_energy_calibration, DS_ISGR_LUT2, &DAL3IBIS_open_LUT2, &DAL3IBIS_read_LUT2, chatter,status), status, "loading LUT2" );
+        TRY( DAL3IBIS_populate_newest_DS(&IBIS_events, &ISGRI_energy_calibration, DS_ISGR_L2RE, &DAL3IBIS_open_L2RE, &DAL3IBIS_read_L2RE, chatter,status), status, "loading LUT2 rapid evolution" );
+
+    TRY_BLOCK_END
+
+    status=DAL3IBIS_reconstruct_ISGRI_energies(&ISGRI_energy_calibration,&IBIS_events,chatter,status);
 
     //status=DAL3IBIS_dealocate(&ISGRI_energy_calibration,status);
 
-    ibis_isgr_energyCheckOut(&ISGRI_events,workGRP,"ISGR-EVTS-COR",ptr_ibis_isgr_energy_settings,chatter,status);
+    ibis_isgr_energyCheckOut(&IBIS_events,workGRP,"ISGR-EVTS-COR",ptr_ibis_isgr_energy_settings,chatter,status);
 
   return status;
 }
@@ -162,7 +169,7 @@ int ibis_isgr_energyWork(dal_element *workGRP,
  * RETURN:            int     current status
  ************************************************************************/
 int ibis_isgr_energyCheckOut(
-        ISGRI_events_struct *ptr_ISGRI_events,
+        IBIS_events_struct *ptr_IBIS_events,
         dal_element *workGRP,
         char         *outName,
         ibis_isgr_energy_settings_struct *ptr_ibis_isgr_energy_settings,
@@ -198,7 +205,7 @@ int ibis_isgr_energyCheckOut(
                 if (chatter > 1)
                     RILlogMessage(NULL, Log_1, "Output table: deleted OLD values.");
             }
-            else if (outRow != ptr_ISGRI_events->numEvents) {
+            else if (outRow != ptr_IBIS_events->numEvents) {
                 RILlogMessage(NULL, Error_2, "%13s has wrong length (%ld rows).",
                         outName, outRow);
                 status=I_ISGR_ERR_ISGR_OUT_COR;
@@ -208,7 +215,7 @@ int ibis_isgr_energyCheckOut(
         }
 
         if (outRow == 0l) {
-            status=DALtableAddRows(*outTable, 0l, ptr_ISGRI_events->numEvents, status);
+            status=DALtableAddRows(*outTable, 0l, ptr_IBIS_events->numEvents, status);
             if (status != ISDC_OK) {
                 RILlogMessage(NULL, Error_2, "Cannot ADD rows. Status=%d", status);
                 break;
@@ -225,12 +232,12 @@ int ibis_isgr_energyCheckOut(
             break;
         }
             
-        RILlogMessage(NULL, Log_0, "will write %li events",ptr_ISGRI_events->numEvents, status);
+        RILlogMessage(NULL, Log_0, "will write %li events",ptr_IBIS_events->numEvents, status);
 
-        status=DALtablePutCol(*outTable, "ISGRI_PI", 0, DAL_BYTE, ptr_ISGRI_events->numEvents,
-                ptr_ISGRI_events->isgri_pi, status);
-        status=DALtablePutCol(*outTable, "ISGRI_ENERGY", 0, DAL_FLOAT, ptr_ISGRI_events->numEvents,
-                ptr_ISGRI_events->isgri_energy, status);
+        status=DALtablePutCol(*outTable, "ISGRI_PI", 0, DAL_BYTE, ptr_IBIS_events->numEvents,
+                ptr_IBIS_events->isgri_pi, status);
+        status=DALtablePutCol(*outTable, "ISGRI_ENERGY", 0, DAL_FLOAT, ptr_IBIS_events->numEvents,
+                ptr_IBIS_events->isgri_energy, status);
 
         if (status != ISDC_OK) {
             RILlogMessage(NULL, Error_2, "Cannot write output data. Status=%d", status);
