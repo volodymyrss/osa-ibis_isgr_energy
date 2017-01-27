@@ -14,10 +14,12 @@ outCorEvts,s,a,"test_data/isgr_cor_events.fits[ISGR-EVTS-COR]",,,"DOL of the cor
 outGRP,    s,h,"",,,"DOL of the output group"
 inRawEvts, s,h,"",,,"DOL of the input RAW events data structures"
 hkCnvDOL,  s,h,"",,,"DOL of the input converted HK1 (replaces the one in the group)"
+
 riseDOL,s,a,"isgr_3dl2_mod_0001.fits[1]",,,"DOL of the rise-time calibration table"
 GODOL,s,a,"ibis_isgr_gain_offset_0010.fits[ISGR-OFFS-MOD,1,BINTABLE]",,,"DOL of the Gain-Offset calibration table"
-supGDOL,s,a,"gain2.fits",,,"DOL of gain coefficients for 2nd method"
-supODOL,s,a,"offset2.fits",,,"DOL of offset coefficients for 2nd method"
+mcecDOL,s,a,"",,,""
+l2reDOL,s,a,"",,,""
+
 randSeed,  s,h,"",,,"seed for random generator (if empty: no seed)"
 useGTI,    b,h, y,,,"if true=y, unused PRP data must exist"
 eraseALL,  b,h, n,,,"if true=y, erase all rows before updating output"

@@ -134,10 +134,10 @@
 
 
 typedef struct {
-    char riseDOLstr[DAL_FILE_NAME_STRING]; 
-    char acorDOLstr[DAL_FILE_NAME_STRING];
-    char phGainDOLstr[DAL_FILE_NAME_STRING];
-    char phOffsDOLstr[DAL_FILE_NAME_STRING];
+    char lut2_DOL[DAL_FILE_NAME_STRING]; 
+    char lut1_DOL[DAL_FILE_NAME_STRING];
+    char mcec_DOL[DAL_FILE_NAME_STRING];
+    char l2re_DOL[DAL_FILE_NAME_STRING];
 } ISGRI_energy_caldb_dols_struct;
 
 typedef struct  {

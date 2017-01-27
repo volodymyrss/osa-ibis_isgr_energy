@@ -49,118 +49,74 @@
 int get_all_PIL(dal_element **ptr_workGRP,
                 ibis_isgr_energy_settings_struct *ptr_ibis_isgr_energy_settings,
                 ISGRI_energy_caldb_dols_struct *ptr_ISGRI_energy_caldb_dols,
-                int *chatter,
+                int *ptr_chatter,
                 int status) {
     char  randName[DAL_BIG_STRING];
     unsigned long seed;
+    int chatter;
 
-    status=PILGetInt("chatter", &chatter);
-    if (status != ISDC_OK) return status;
-    RILlogMessage(NULL, Log_2, "Verbosity level = %d", chatter);
+    TRY_BLOCK_BEGIN
 
-    status=PILGetBool("useGTI", &ptr_ibis_isgr_energy_settings->gti);
-    if (status != ISDC_OK) return status;
+        TRY( PILGetInt("chatter", ptr_chatter), status, "reading chatter parameter" );
+        chatter=*ptr_chatter;
 
-    if (chatter > 0) {
-        if (ptr_ibis_isgr_energy_settings->gti)
-            RILlogMessage(NULL, Log_2,"Number of GTI: 1 (PRP must contain OBTs)");
-        else
-            RILlogMessage(NULL, Log_2,"Number of GTI: 0 (PRP can have 0 OBT)");
-    }
+        RILlogMessage(NULL, Log_2, "Verbosity level = %d", chatter);
 
-    status=PILGetBool("eraseALL", &ptr_ibis_isgr_energy_settings->erase);
-    if (status != ISDC_OK) return status;
+        TRY( PILGetBool("useGTI", &ptr_ibis_isgr_energy_settings->gti), status, "unable to read gti parameter" );
 
-    if (chatter > 0) {
-        if (ptr_ibis_isgr_energy_settings->erase)
-            RILlogMessage(NULL, Log_2,"Erase output rows");
-        else
-            RILlogMessage(NULL, Log_2,"Replace output columns");
-    }
-    status=PILGetString("randSeed", randName);
-    if (status != ISDC_OK) {
-        RILlogMessage(NULL, Error_2, "The parameter 'randSeed' is not found.");
-        return status;
-    }
-    if (strlen(randName) > 0) {
-        seed=strtoul(randName, (char **)NULL, 10);
-        if (seed == ULONG_MAX) {
-            RILlogMessage(NULL, Error_2, "Parameter 'randSeed' interval: 0<=  <%lu",
-                    ULONG_MAX);
-            status=I_ISGR_ERR_BAD_INPUT;
-            return status;
+        if (chatter > 0) {
+            if (ptr_ibis_isgr_energy_settings->gti)
+                RILlogMessage(NULL, Log_2,"Number of GTI: 1 (PRP must contain OBTs)");
+            else
+                RILlogMessage(NULL, Log_2,"Number of GTI: 0 (PRP can have 0 OBT)");
         }
-        RILlogMessage(NULL, Log_2, "Seed for random number generator: %010lu", seed);
-        DAL3GENrandomSeed(seed);
-    }
 
-    status=PILGetString("riseDOL", ptr_ISGRI_energy_caldb_dols->riseDOLstr);
-    if (status != ISDC_OK) return status;
+        TRY( PILGetBool("eraseALL", &ptr_ibis_isgr_energy_settings->erase), status, "unable to read eraseALL parameter" );
 
-/*h
-    if (strlen(riseDOLstr) == 0) {
-        RILlogMessage(NULL, Error_2, "The parameter 'riseDOL' is empty");
-        status=I_ISGR_ERR_BAD_INPUT;
-        return status;
-    }
+        if (chatter > 0) {
+            if (ptr_ibis_isgr_energy_settings->erase)
+                RILlogMessage(NULL, Log_2,"Erase output rows");
+            else
+                RILlogMessage(NULL, Log_2,"Replace output columns");
+        }
 
-    status=PILGetString("GODOL", ptr_ISGRI_energy_caldb_dols->acorDOLstr);
-    if (status != ISDC_OK) return status;
+        TRY( PILGetString("randSeed", randName), status, "The parameter 'randSeed' is not found.");
+        if (strlen(randName) > 0) {
+            seed=strtoul(randName, (char **)NULL, 10);
+            if (seed == ULONG_MAX) {
+                FAIL(I_ISGR_ERR_BAD_INPUT, "Parameter 'randSeed' interval: 0<=  <%lu",ULONG_MAX);
+            }
+            RILlogMessage(NULL, Log_2, "Seed for random number generator: %010lu", seed);
+            DAL3GENrandomSeed(seed);
+        }
+        
+        TRY( PILGetString("GODOL", ptr_ISGRI_energy_caldb_dols->lut1_DOL), status, "reading GODOL parameter" );
+        if (strlen(ptr_ISGRI_energy_caldb_dols->lut1_DOL) == 0) FAIL(I_ISGR_ERR_BAD_INPUT,"The parameter 'GODOL' is empty");
 
-    if (strlen(acorDOLstr) == 0) {
-        RILlogMessage(NULL, Error_2, "The parameter 'GODOL' is empty");
-        status=I_ISGR_ERR_BAD_INPUT;
-        return status;
-    }
+        TRY( PILGetString("riseDOL", ptr_ISGRI_energy_caldb_dols->lut2_DOL), status, "reading riseDOL parameter");
+        if (strlen(ptr_ISGRI_energy_caldb_dols->lut2_DOL) == 0) FAIL(I_ISGR_ERR_BAD_INPUT,"The parameter 'riseDOL' is empty");
 
-    status=PILGetString("supGDOL", ptr_ISGRI_energy_caldb_dols->phGainDOLstr);
-    if (status != ISDC_OK) return status;
+        TRY( PILGetString("mcecDOL", ptr_ISGRI_energy_caldb_dols->mcec_DOL), status, "reading mcecDOL parameter");
+        if (strlen(ptr_ISGRI_energy_caldb_dols->mcec_DOL) == 0) FAIL(I_ISGR_ERR_BAD_INPUT,"The parameter 'mcecDOL' is empty");
+        
+        TRY( PILGetString("l2reDOL", ptr_ISGRI_energy_caldb_dols->l2re_DOL), status, "reading mcecDOL parameter");
+        if (strlen(ptr_ISGRI_energy_caldb_dols->l2re_DOL) == 0) FAIL(I_ISGR_ERR_BAD_INPUT,"The parameter 'l2reDOL' is empty");
 
-    if (strlen(phGainDOLstr) == 0) {
-        RILlogMessage(NULL, Error_2, "The parameter 'supGDOL' is empty");
-        status=I_ISGR_ERR_BAD_INPUT;
-        return status;
-    }
+        TRY( CommonPreparePARsStrings("inGRP",
+                "inRawEvts,hkCnvDOL",
+                "outGRP",
+                "outCorEvts",
+                &ptr_ibis_isgr_energy_settings->makeUnique,
+                ptr_workGRP,
+                &ptr_ibis_isgr_energy_settings->clobber,
+                status),
+                    status,"CommonPreparePARsStrings"
+                );
 
-    status=PILGetString("supODOL", ptr_ISGRI_energy_caldb_dols->phOffsDOLstr);
-    if (status != ISDC_OK) return status;
-
-    if (strlen(phOffsDOLstr) == 0) {
-        RILlogMessage(NULL, Error_2, "The parameter 'supODOL' is empty");
-        status=I_ISGR_ERR_BAD_INPUT;
-        return status;
-    } 
-    */
-
-    status=CommonPreparePARsStrings("inGRP",
-            "inRawEvts,hkCnvDOL",
-            "outGRP",
-            "outCorEvts",
-            &ptr_ibis_isgr_energy_settings->makeUnique,
-            ptr_workGRP,
-            &ptr_ibis_isgr_energy_settings->clobber,
-            status);
-
-    if (status == GROUP_NOT_FOUND) {
-        RILlogMessage(NULL, Error_2, "Program aborted: GROUP not found.");
-        return status;
-    }
-    else if (status != ISDC_OK) {
-        RILlogMessage(NULL, Error_2, "CommonPreparePARsStrings error. Status=%d",
-                status);
-        return status;
-    }
+    TRY_BLOCK_END
+    return status;
 }
   
-void parse_error(status) {
-    switch (status) {
-        case ISDC_OK:
-            break;
-        case I_ISGR_ERR_MEMORY: 
-            RILlogMessage(NULL, Error_2, "Program aborted: memory allocation error.");
-            break;
-    }
-}
 
 int main (int argc, char *argv[])
 {
@@ -186,10 +142,9 @@ int main (int argc, char *argv[])
 
   status=ibis_isgr_energyWork(workGRP, &ibis_isgr_energy_settings, &ISGRI_energy_caldb_dols,chatter,status);
 
-  parse_error(status);
-
   if (workGRP != NULL) status=CommonCloseSWG(workGRP, status);
 
   CommonExit(status);
+
   return(status); 
 }
