@@ -41,6 +41,9 @@
  * ASA, 6.2, 20/12/2007, SPR 4773 4698 (+ cosmetic changes)
  *  PL, 8.0  02/02/2012,   remove IREM counters, Temperature correction by MDU
  *  PL, 8.2  02/04/2012,   modify coefficients PAR1_..._corrPH1 to correct <50 keV behavior
+ *  VS, 9.0. 27/01/2017, most of the functionality moved to DAL3IBIS
+ * 
+ *  see also https://github.com/volodymyrss/osa-ibis_isgr_energy
  ************************************************************************/
 
 #include "ibis_isgr_energy.h" 
@@ -145,6 +148,8 @@ int main (int argc, char *argv[])
   if (workGRP != NULL) status=CommonCloseSWG(workGRP, status);
 
   CommonExit(status);
+
+  status=DAL_GC_free_all(chatter,status);
 
   return(status); 
 }
