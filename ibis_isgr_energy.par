@@ -17,8 +17,8 @@ hkCnvDOL,  s,h,"",,,"DOL of the input converted HK1 (replaces the one in the gro
 
 riseDOL,s,a,"isgr_3dl2_mod_0001.fits[1]",,,"DOL of the rise-time calibration table"
 GODOL,s,a,"ibis_isgr_gain_offset_0010.fits[ISGR-OFFS-MOD,1,BINTABLE]",,,"DOL of the Gain-Offset calibration table"
-mcecDOL,s,a,"",,,""
-l2reDOL,s,a,"",,,""
+mcecDOL,s,a,"",,,"ISGR-MCEC-MOD"
+l2reDOL,s,a,"",,,"ISGR-L2RE-MOD"
 
 randSeed,  s,h,"",,,"seed for random generator (if empty: no seed)"
 useGTI,    b,h, y,,,"if true=y, unused PRP data must exist"
