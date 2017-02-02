@@ -67,8 +67,10 @@
 #include "dal3ibis_calib.h"
 #include "dal3hk.h"
 
+#include "git_version.h"
+
 #define COMPONENT_NAME           "ibis_isgr_energy"
-#define COMPONENT_VERSION        "9.0"
+#define COMPONENT_VERSION        "9.0" GIT_VERSION
 
 #define I_ISGR_ERR_MEMORY         -122050
 #define I_ISGR_ERR_BAD_INPUT      -122051
