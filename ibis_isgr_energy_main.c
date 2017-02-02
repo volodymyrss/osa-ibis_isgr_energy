@@ -134,7 +134,7 @@ int main (int argc, char *argv[])
 
   TRY_BLOCK_BEGIN
 
-      TRY( CommonInit(COMPONENT_NAME, COMPONENT_VERSION, argc, argv), status, "CommonInit" );
+      status = CommonInit(COMPONENT_NAME, COMPONENT_VERSION, argc, argv);
       if (status != ISDC_SINGLE_MODE) {
         RILlogMessage(NULL, Warning_2, "CommonInit status = %d", status);
         RILlogMessage(NULL, Warning_2, "number of command line arguments = %d", argc);
