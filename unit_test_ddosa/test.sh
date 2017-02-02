@@ -7,7 +7,7 @@ add2python $PWD
 (
     mkdir -pv $TMPDIR
     cd $TMPDIR
-    rundda.py ibis_isgr_energy -m ddosa  -m git://ddosa11/HEAD -m /onlybright/v4.2 -a 'ddosa.ScWData(input_scwid="'$scw'")'
+    rundda.py ibis_isgr_energy -m ddosa  -m git://ddosa11/master -m /onlybright/v4.2 -a 'ddosa.ScWData(input_scwid="'$scw'")'
  #   rundda.py BinBackgroundSpectrum -m ddosa -m /eddosa/GG5  -m /onlybright/v4.2 -a 'ddosa.ScWData(input_scwid="'$scw'")' -f BinBackgroundSpectrum
 )
 

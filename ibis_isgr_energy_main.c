@@ -109,7 +109,7 @@ int get_all_PIL(dal_element **ptr_workGRP,
                 "inRawEvts,hkCnvDOL",
                 "outGRP",
                 "outCorEvts",
-                &ptr_ibis_isgr_energy_settings->makeUnique,
+                ptr_ibis_isgr_energy_settings->makeUnique,
                 ptr_workGRP,
                 &ptr_ibis_isgr_energy_settings->clobber,
                 status),
@@ -130,26 +130,32 @@ int main (int argc, char *argv[])
   ISGRI_energy_caldb_dols_struct ISGRI_energy_caldb_dols;
   dal_element  *workGRP = NULL;
   
-  ibis_isgr_energy_settings.makeUnique = 1,
+  ibis_isgr_energy_settings.makeUnique = 1;
 
-  status=CommonInit(COMPONENT_NAME, COMPONENT_VERSION, argc, argv);
-  if (status != ISDC_SINGLE_MODE) {
-    RILlogMessage(NULL, Warning_2, "CommonInit status = %d", status);
-    RILlogMessage(NULL, Warning_2, "number of command line arguments = %d", argc);
-    RILlogMessage(NULL, Warning_2, "program name : %s", argv[0]);
-    RILlogMessage(NULL, Warning_2, "Program aborted : could not initialize.");
-    CommonExit(status);
-  }
+  TRY_BLOCK_BEGIN
 
-  status=get_all_PIL(&workGRP,&ibis_isgr_energy_settings,&ISGRI_energy_caldb_dols,&chatter,status);
+      TRY( CommonInit(COMPONENT_NAME, COMPONENT_VERSION, argc, argv), status, "CommonInit" );
+      if (status != ISDC_SINGLE_MODE) {
+        RILlogMessage(NULL, Warning_2, "CommonInit status = %d", status);
+        RILlogMessage(NULL, Warning_2, "number of command line arguments = %d", argc);
+        RILlogMessage(NULL, Warning_2, "program name : %s", argv[0]);
+        RILlogMessage(NULL, Warning_2, "Program aborted : could not initialize.");
+        CommonExit(status);
+      }
 
-  status=ibis_isgr_energyWork(workGRP, &ibis_isgr_energy_settings, &ISGRI_energy_caldb_dols,chatter,status);
+      TRY( get_all_PIL(&workGRP,&ibis_isgr_energy_settings,&ISGRI_energy_caldb_dols,&chatter,status), status, "get_all_PIL" );
 
-  if (workGRP != NULL) status=CommonCloseSWG(workGRP, status);
+      TRY( ibis_isgr_energyWork(workGRP, &ibis_isgr_energy_settings, &ISGRI_energy_caldb_dols,chatter,status), status, "ibis_isgr_energyWork" );
 
-  CommonExit(status);
+      if (workGRP != NULL)
+          TRY( CommonCloseSWG(workGRP, status), status, "CommonCloseSWG");
+
+      CommonExit(status);
+
+  TRY_BLOCK_END
 
   status=DAL_GC_free_all(chatter,status);
+
 
   return(status); 
 }
