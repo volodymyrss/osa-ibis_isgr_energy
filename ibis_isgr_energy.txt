@@ -39,6 +39,7 @@ If empty, you will always get the same sequence of random numbers
 and adds rows. With "eraseALL" set to false, keeps existing rows in output COR
 and update output columns. In this case, error -122054 is issued if the number
 of existing rows do not match data.
+
  With "useGTI" set to false, the number of GTI is 0 and program treats all
 Science Window events even with a PRP structure (for OBT) with no row.
  From version 5.3, with default "useGTI" yes, the event selection is done at
