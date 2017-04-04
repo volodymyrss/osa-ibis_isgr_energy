@@ -1,4 +1,4 @@
 delivery-ignore.txt
-depends-on.txt
-component.json
+depends_on.txt
+component.yaml
 README.md
