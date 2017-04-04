@@ -1,0 +1,4 @@
+delivery-ignore.txt
+depends-on.txt
+component.json
+README.md

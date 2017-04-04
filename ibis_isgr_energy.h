@@ -1,6 +1,6 @@
 /************************************************************************
  * FILE:        ibis_isgr_energy.h
- * VERSION:     9.0
+ * VERSION:     %VERSION%
  * COMPONENT:   ibis_isgr_energy
  * AUTHOR:      A.Sauvageon & C. Couvreur,     SAp-CEA
  * DESCRIPTION: definition of the globals and functions' prototypes
@@ -67,10 +67,10 @@
 #include "dal3ibis_calib.h"
 #include "dal3hk.h"
 
-#include "git_version.h"
 
-#define COMPONENT_NAME           "ibis_isgr_energy"
-#define COMPONENT_VERSION        "9.0" GIT_VERSION
+#define COMPONENT_NAME           "ibis_isgr_version"
+#define COMPONENT_VERSION        "9.0" 
+
 
 #define I_ISGR_ERR_MEMORY         -122050
 #define I_ISGR_ERR_BAD_INPUT      -122051

@@ -6,7 +6,7 @@
 # copyright: ISDC, chemin d'Ecogia 16, 1290 Versoix, Switzerland         #
 ##########################################################################
 
-TAR_FILE_NAME		= ibis_isgr_energy-8.3
+TAR_FILE_NAME		= ibis_isgr_version-9.0
 EXTERNAL_PACKAGES	=
 SUBDIRS			=
 
