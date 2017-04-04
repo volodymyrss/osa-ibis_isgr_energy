@@ -1,6 +1,6 @@
 /************************************************************************
  * FILE:        ibis_isgr_energy.h
- * VERSION:     8.3
+ * VERSION:     9.0
  * COMPONENT:   ibis_isgr_energy
  * AUTHOR:      A.Sauvageon & C. Couvreur,     SAp-CEA
  * DESCRIPTION: definition of the globals and functions' prototypes

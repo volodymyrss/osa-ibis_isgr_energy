@@ -8,6 +8,10 @@
 #   Author : PL, 24/06/2002
 #           ASA, 30/03/2004
 #************************************************************
+
+echo "DISABLED!"
+exit 0
+
 setenv PFILES .\;..:$ISDC_ENV/pfiles
 setenv COMMONLOGFILE +common_log.txt
 #

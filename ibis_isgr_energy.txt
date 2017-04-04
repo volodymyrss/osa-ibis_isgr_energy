@@ -1,5 +1,5 @@
 NAME
-        ibis_isgr_energy - Version 8.3
+    ibis_isgr_energy - Version 9.0
 	Performs energy correction for each raw ISGRI event, by using two
 	calibration tables (gain/offset then rise-time) and auxiliary files
 	(cumulated proton doses, ...).
@@ -24,28 +24,13 @@ Indeed, the correction is done by rescaling each spectra obtained for a given
 rise-time  value, in order to put each corrected event corresponding to a given
 energy deposits into the same bin.
 
-The calibration processing is made of 2 distinct steps.
-The aim of the first step is to correct raw events from the dependency on
-pixels (with a LUT1 table).
-Second step corrects the PHA drift, using 2 distinct laws:
-- For E>=Ec, we correct with a gain1 (wich depends on proton doses and
-  temperature) and an offset1 (which depends on temperature and orbit number).
-- For E<=Ec, we use a second law with a gain2 and offset2 which depends on
-  rise-time, temperature, proton doses and revolution number.
-Ec is chosen with Ec=(o2-o1)/(g1-g2) to give same energy for both laws. 
-The goal of the second step is to convert corrected events into energy (in keV).
-We use a rise-time correction table (LUT2 3D 1024*256*500) giving for each
-incident energy and rise-time a probable energy (among 500 possible).
-
-We have then: Isgr_Ed = offset + LUT2_3D[pha/2, rt, random_number]/30. 
-
 In this formula, pha and rt have been made pixel independant with LUT1
 (gain/offset for each pixel) and corrected from temperature, cumulated dose of 
 protons, rise-time effect. The offset value is a constant.
 After correction by LUT1, if the rise-time or the amplitude is out of the LUT2 
 table, we take (version 4.1 and after) the last available value of LUT2.
 
- This random generator can have the seed specified in the parameters.
+This random generator can have the seed specified in the parameters.
 The seed must be an unsigned long strictly below (2^32)-1.
 If empty, you will always get the same sequence of random numbers
 (since DAL3GEN random function has a default seed).
@@ -126,6 +111,7 @@ BUGS
    Not yet.
 
 AUTHOR
+   Volodymyr Savchenko, APC+ISDC, volodymyr.savchenko@unige.ch
    Christophe Couvreur, CEA/SAp Saclay, ccouvreu@cea.fr
    Aymeric Sauvageon,   CEA/SAp Saclay, asauvageon@cea.fr
    Philippe Laurent,    CEA/SAp Saclay, plaurent@.cea.fr

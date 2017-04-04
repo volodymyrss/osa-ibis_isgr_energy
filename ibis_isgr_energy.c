@@ -1,6 +1,6 @@
 /************************************************************************
  * FILE:        ibis_isgr_energy.c
- * VERSION:     8.3
+ * VERSION:     9.0
  * COMPONENT:   ibis_isgr_energy
  * AUTHOR:      P. Laurent,     SAp-CEA & APC
  * DESCRIPTION: component subroutine source code

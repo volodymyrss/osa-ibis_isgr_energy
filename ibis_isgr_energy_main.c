@@ -42,13 +42,24 @@
  *  PL, 8.0  02/02/2012,   remove IREM counters, Temperature correction by MDU
  *  PL, 8.2  02/04/2012,   modify coefficients PAR1_..._corrPH1 to correct <50 keV behavior
  *  VS, 9.0. 27/01/2017, most of the functionality moved to DAL3IBIS
- * 
  *  see also https://github.com/volodymyrss/osa-ibis_isgr_energy
  ************************************************************************/
 
 #include "ibis_isgr_energy.h" 
 
 
+/************************************************************************
+ * FUNCTION:  get_all_PIL
+ * DESCRIPTION:
+ *  gets the settings from PIL
+ * ERROR CODES:
+ *  DAL error codes
+ *  I_ISGR_ERR_ISGR_OUT_COR   if number of output rows inconsistent
+ *  I_ISGR_ERR_BAD_INPUT      bad input somehow
+ *  see other parameter by their names
+ ************************************************************************/
+
+// returns status
 int get_all_PIL(dal_element **ptr_workGRP,
                 ibis_isgr_energy_settings_struct *ptr_ibis_isgr_energy_settings,
                 ISGRI_energy_caldb_dols_struct *ptr_ISGRI_energy_caldb_dols,
