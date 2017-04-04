@@ -2,3 +2,4 @@ delivery-ignore.txt
 depends_on.txt
 component.yaml
 README.md
+unit_test_ddosa
