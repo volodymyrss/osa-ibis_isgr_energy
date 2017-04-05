@@ -84,7 +84,7 @@
  *  NP, 8.1  21/02/2012,   completely remove IREM counters
  *  PL, 8.2  02/04/2012,   modify coefficients PAR1_..._corrPH1 to correct <50 keV behavior
  *  CF, 8.3  05/11/2015,   SCREW 2624 path for low energy correction implemented with Paris agreement
- *  VS, 9.0  17/01/2017,   substrantially rewritten, a lot of functionality moved to dal3ibis_calib
+ *  VS, {{component_version}}  17/01/2017,   substrantially rewritten, a lot of functionality moved to dal3ibis_calib
  ******************************************************************************/
 
 #include "ibis_isgr_energy.h"
