@@ -1,0 +1,33 @@
+##########################################################################
+# package:   makefiles                                                   #
+# version:   2.0.1, 21-Jan-2000                                            #
+# file:      makeisdc1(.in)                                              #
+# author:    Jerzy.Borkowski@obs.unige.ch                                #
+# copyright: ISDC, chemin d'Ecogia 16, 1290 Versoix, Switzerland         #
+##########################################################################
+
+TAR_FILE_NAME		= ibis_isgr_energy-9.0
+EXTERNAL_PACKAGES	=
+SUBDIRS			=
+
+C_EXEC_1_NAME		= ibis_isgr_energy
+C_EXEC_1_SOURCES	= ibis_isgr_energy_main.c ibis_isgr_energy.c
+C_EXEC_1_OBJECTS	= ibis_isgr_energy_main.o ibis_isgr_energy.o
+C_EXEC_1_LIBRARIES	= -ldal3ibis -ldal3aux -ldal3hk -ldal3gen -lcommon -ldal -lril -lpil -lcfitsio -lISDCroot ${LAST_LIBS}
+
+${C_EXEC_1_NAME}:	${C_EXEC_1_OBJECTS}
+			${CC}  ${ALL_C_CFLAGS} -o ${C_EXEC_1_NAME} ${C_EXEC_1_OBJECTS} ${ALL_C_LDFLAGS} ${C_EXEC_1_LIBRARIES}
+
+CLEAN_TARGETS		+= ${C_EXEC_1_NAME}
+ALL_TARGETS		+= ${C_EXEC_1_NAME}
+TO_INSTALL_BIN		+= ${C_EXEC_1_NAME}
+TO_INSTALL_HELP		+= ${C_EXEC_1_NAME}.txt
+TO_INSTALL_INC		+= ${C_EXEC_1_NAME}.h
+TO_INSTALL_LIB		+=
+TO_INSTALL_PAR		+= ${C_EXEC_1_NAME}.par
+TO_INSTALL_TEMPLATES	+=
+TO_INSTALL_EXTRA_GLOBAL	+=
+TO_INSTALL_EXTRA_LOCAL	+=
+
+testcommands:: ibis_isgr_energy
+	(cd unit_test; csh -f ./README.test)
