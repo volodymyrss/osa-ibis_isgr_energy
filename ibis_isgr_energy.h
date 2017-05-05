@@ -68,8 +68,12 @@
 #include "dal3hk.h"
 
 
+
 #define COMPONENT_NAME           "ibis_isgr_energy"
 #define COMPONENT_VERSION        "9.0" 
+
+
+
 
 
 #define I_ISGR_ERR_MEMORY         -122050
