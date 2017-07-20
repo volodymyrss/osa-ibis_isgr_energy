@@ -120,7 +120,8 @@ int ibis_isgr_energyWork(dal_element *workGRP,
                          char        *acorName,
                          char        *riseName,
                          char        *phGainDOLstr,
-                         char        *phOffDOLstr)
+                         char        *phOffDOLstr,
+                         int          corGainDrift)
 {
   int    i, status = ISDC_OK,
          freeStatus= ISDC_OK;
@@ -355,7 +356,7 @@ int ibis_isgr_energyWork(dal_element *workGRP,
 				 meanBias,    
                                  isgriPha, riseTime,
                                  isgriY, isgriZ,
-                                 isgrPi, isgrPHA2, isgrRT1, isgrPHA1, isgrEnergy);
+                                 isgrPi, isgrPHA2, isgrRT1, isgrPHA1, isgrEnergy, corGainDrift);
   } while(0);
 
   /*#################################################################*/
@@ -1270,7 +1271,8 @@ int ibis_isgr_energyTransform   (dal_element *outTable,
 				 DAL3_Word   *isgrPHA2,
 				 DAL3_Byte   *isgrRT1,
 				 DAL3_Word   *isgrPHA1,
-				 float       *isgrEnergy)
+				 float       *isgrEnergy,
+                 int          corGainDrift)
 {
   int    status = ISDC_OK,
     pixelNo,mce,
@@ -1308,12 +1310,14 @@ do {
   if (Chc == NULL) break;
   status=ISDC_OK;
 
+
   for (j=0;j<8;j++) 
     {
       meanTemp[j]=(meanTemp[j]+273.0)/273.0; /* to scale temperature in ratio to minimum Kelvin */
       meanBias[j]=-meanBias[j]/100. ;
       meanBias[j]=1.2 ;
     }
+  
 
   for (i=0;i<128;i++)
     for (j=0;j<128;j++)
@@ -1324,7 +1328,14 @@ do {
 	oh[pixelNo] = isgriGoTab[1][pixelNo]*pow(meanTemp[mce],slopeMDU[mce])*pow(meanBias[mce],0.0288);
 	gt[pixelNo] = isgriGoTab[2][pixelNo]*pow(meanTemp[mce],0.518)*pow(meanBias[mce],0.583);
 	ot[pixelNo] = isgriGoTab[3][pixelNo]*pow(meanTemp[mce],0.625)*pow(meanBias[mce],0.530);
+  
+        if (i==44 && j==93) {
+            printf("best pixel 44 93 %.5lg %.5lg %.5lg %.5lg", isgriGoTab[0][pixelNo], isgriGoTab[1][pixelNo], isgriGoTab[2][pixelNo], isgriGoTab[3][pixelNo]);
+            printf("best pixel 44 93 %.5lg %.5lg %.5lg %.5lg", gt[pixelNo], ot[pixelNo], gh[pixelNo], oh[pixelNo]);
+        }
+
       }
+
   
   /*Law 1 correction: offset = law 2(revol=0,RT=0) fixed, gain calibration with W line
   par[12]_[gain,offset]_corrPH1 must also be defined in ii_shadow_build_types.h*/
@@ -1357,14 +1368,29 @@ do {
   /* Compute corrected energies  */
   /*#################################################################*/
     for (j=0L; j < numEvents; j++)  {
+      int track=0;
+      if (fabs(riseTime[j]-40)<5 && fabs(isgriPha[j]-1000)<1) {
+          printf("found favorite photon, will track %i %i\n",(int)riseTime[j],(int)isgriPha[j]);
+          track=1;
+      }
       
       /*--- LUT1 corrections ---*/
       pixelNo = 128*(int)isgriY[j] + (int)isgriZ[j];
 
-    rt = 2.*riseTime[j]/2.4+5.0;  /* 256 channels for LUT2 calibration scaled */
-    rt = rt*gt[pixelNo] + ot[pixelNo];
 
+    rt = 2.*riseTime[j]/2.4+5.0;  /* 256 channels for LUT2 calibration scaled */
+          
+    if (track)
+        printf("scaled rt %.5lg\n",rt);
+
+    rt = rt*gt[pixelNo] + ot[pixelNo];
     pha = isgriPha[j]*gh[pixelNo] + oh[pixelNo];
+    
+    if (track)
+        printf("pixel %i %i LUT1 RT G %.5lg  O %.5lg PHA G %.5lg O %.5lg\n",(int)isgriY[j],(int)isgriZ[j],gt[pixelNo],ot[pixelNo],gh[pixelNo],oh[pixelNo]);
+    
+    if (track)
+        printf("pha, rt  after LUT1 %.5lg %.5lg\n",pha,rt);
 
     isgrRT1[j]=(DAL3_Byte)rt;
     isgrPHA1[j]=(DAL3_Word)pha;
@@ -1381,10 +1407,16 @@ do {
     if (irt < 0)        {irt=0;   infoEvt[0]++;}
     else if (irt > 255) {irt=255; infoEvt[1]++;}
 
-    random_num=DAL3GENrandomDoubleX1()-0.5;
-    if (pha < Chc[irt]) pha=(pha+random_num-offset_corrPH1)/gain_corrPH1;
-    else           pha=(pha+random_num-offset_corrPH2[irt])/gain_corrPH2[irt];
-    pha=  2*(pha-off_scale)/g_scale;
+    if (corGainDrift) {
+        random_num=DAL3GENrandomDoubleX1()-0.5;
+        if (pha < Chc[irt]) pha=(pha+random_num-offset_corrPH1)/gain_corrPH1;
+        else           pha=(pha+random_num-offset_corrPH2[irt])/gain_corrPH2[irt];
+        pha=  2*(pha-off_scale)/g_scale;
+    } else {
+      //  random_num=DAL3GENrandomDoubleX1()-0.5; //??
+      //  pha=  (pha-off_scale)/g_scale;
+    };
+
     ipha= (int)pha;
 
     /*random_num=500.0*rand()/(1+(double)RAND_MAX);*/
@@ -1395,6 +1427,10 @@ do {
       /*ener = (double) 2.0*isgriRtTab[(int)(pha/2.0)][irt][(int)random_num]/30.0;*/
       if ((pha/2.0-floor(pha/2.0)) <0.5) ipha2 = (long)floor(pha/2.0) ;
         else ipha2 = (long)ceil(pha/2.0);
+
+        if (track)
+            printf("to LUT2 pha %i %i\n",(int)ipha2,(int)irt);
+
       index_cc= ipha2
 	+ISGRI_RT_N_ENER_SCALED*irt
                     +ISGRI_RT_N_ENER_SCALED*ISGRI_RT_N_DATA*(long)random_num;
@@ -1411,6 +1447,8 @@ do {
       }
       ener=FINALOFFS+((double)isgriRtTab[index_cc]+delte)/30.0;
       /*NP Piotr end*/
+        if (track)
+            printf("LUT2 gives %i, energy %.5lg\n",(int)isgriRtTab[index_cc],ener);
     }
     else if (ipha >= 2048) {
       /*ener =(double) 2.0*isgriRtTab[(int)(ISGRI_RT_N_ENER/2.0-1)][irt][(int)random_num]/30.0;*/

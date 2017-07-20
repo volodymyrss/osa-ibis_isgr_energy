@@ -137,7 +137,8 @@ int ibis_isgr_energyWork(dal_element *workGRP,
                          char        *acorName,
                          char        *riseName,
                          char        *phGainDOLstr,
-                         char        *phOffDOLstr);
+                         char        *phOffDOLstr,
+                         int          corGainDrift);
 
 int ibis_isgr_energyCheckIn(
                          char         *acorName,
@@ -208,5 +209,6 @@ int ibis_isgr_energyTransform(dal_element *outTable,
                          DAL3_Word   *isgrPHA2,
                          DAL3_Byte   *isgrPH1,
                          DAL3_Word   *isgrPHA1,
-                         float       *isgrEnergy);
+                         float       *isgrEnergy,
+                         int          corGainDrift);
 #endif
