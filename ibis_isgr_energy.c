@@ -1523,7 +1523,7 @@ do {
     isgrPi[j]=(DAL3_Byte)irt;
     isgrPHA2[j]=(DAL3_Word)ipha2;
 
-    if (n_anomaly>10) { // hardcoded anomaly number
+    if (n_anomaly>1000) { // hardcoded anomaly number
         RILlogMessage(NULL, Error_1, "large number of anomalies", n_anomaly);
         status=-1;
         break;
