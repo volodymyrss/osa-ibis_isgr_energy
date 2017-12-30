@@ -165,8 +165,7 @@ int main (int argc, char *argv[])
 
   TRY_BLOCK_END
 
-  status=DAL_GC_free_all(chatter,status);
-
+  DAL_GC_free_all(chatter,status); //GC status is discarded
 
   return(status); 
 }

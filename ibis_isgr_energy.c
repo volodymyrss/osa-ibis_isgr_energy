@@ -135,15 +135,20 @@ int ibis_isgr_energyWork(dal_element *workGRP,
 
         TRY( DAL3IBIS_reconstruct_ISGRI_energies(&ISGRI_energy_calibration,&IBIS_events,chatter,status), status, "reconstructing ISGRI energies" );
     TRY_BLOCK_END
+    
+    status=ibis_isgr_energyCheckOut(&IBIS_events,workGRP,"ISGR-EVTS-COR",ptr_ibis_isgr_energy_settings,chatter,status);
 
-    RILlogMessage(NULL, Error_2, "ibis_isgr_energyWork finishing with status=%d", status);
+    if (status != ISDC_OK) {
+        RILlogMessage(NULL, Error_2, "ibis_isgr_energyWork failed with status=%d", status);
+    } else {
+        RILlogMessage(NULL, Log_2, "ibis_isgr_energyWork succeeded with status=%d", status);
+    }
 
 
     //status=DAL3IBIS_dealocate(&ISGRI_energy_calibration,status);
 
-    ibis_isgr_energyCheckOut(&IBIS_events,workGRP,"ISGR-EVTS-COR",ptr_ibis_isgr_energy_settings,chatter,status);
 
-  return status;
+    return status;
 }
 
 
