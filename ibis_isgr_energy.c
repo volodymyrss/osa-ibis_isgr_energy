@@ -136,6 +136,8 @@ int ibis_isgr_energyWork(dal_element *workGRP,
         TRY( DAL3IBIS_reconstruct_ISGRI_energies(&ISGRI_energy_calibration,&IBIS_events,chatter,status), status, "reconstructing ISGRI energies" );
     TRY_BLOCK_END
 
+    RILlogMessage(NULL, Error_2, "ibis_isgr_energyWork finishing with status=%d", status);
+
 
     //status=DAL3IBIS_dealocate(&ISGRI_energy_calibration,status);
 
@@ -189,7 +191,7 @@ int ibis_isgr_energyCheckOut(
             break;
         }
         if (chatter > 2)
-            RILlogMessage(NULL, Log_0, "%13s output table: %9ld rows.", outName, outRow);
+            RILlogMessage(NULL, Log_0, "%13s output table before writing: %9ld rows.", outName, outRow);
 
         if (outRow > 0l) {
 
@@ -240,7 +242,9 @@ int ibis_isgr_energyCheckOut(
 
         if (status != ISDC_OK) {
             RILlogMessage(NULL, Error_2, "Cannot write output data. Status=%d", status);
-        };
+        } else {
+            RILlogMessage(NULL, Log_0, "all done");
+        }
 
         status=CommonStampObject(*outTable, "Energy correction.", status);
 
